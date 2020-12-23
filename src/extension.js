@@ -10,10 +10,9 @@ const links_checker_diagColl = vscode.languages.createDiagnosticCollection("html
 
 // Use to clear the "Problems" Tab when we close the file
 vscode.workspace.onDidCloseTextDocument(function (listener) {
-	// clear all previous diagnostics
+	// clear all previous diagnostics of the closed editor
 	links_checker_diagColl.delete(listener.uri);
-	// links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, undefined);
-	links_checker_diagColl.set(listener.uri, undefined );
+	links_checker_diagColl.set(listener.uri, undefined);
 });
 
 
@@ -24,8 +23,8 @@ function activate(context) {
 
 	let disposable = vscode.commands.registerCommand('html-links-checker.start', function () {
 		links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, []);
-		// Check all A tags
-		checkAlltags_A();
+		// Main process - Validate all URL 
+		mainValidationProcess();
 	});
 
 
@@ -81,7 +80,7 @@ class linkDiagnostic {
 }
 
 /** ***********************************************************************************************
- * My personnel Types of URL
+ * My personnal Types of URL
  */
 const URLType = {
 	isEmpty: null,
@@ -102,45 +101,28 @@ const myErrorCodeURL = {
 	noURL: 1000,
 	noAnchor: 1404,
 	multipleAnchor: 1409,
-	relative: 1405
+	relative: 1405,
+	extLinkAccessibility: 1100
 }
 
 
-/** ***********************************************************************************************
- * @param {JSDOM} DOM 
- * @param {JSDOM.nodeElem} DOMelem Element of DOM to get the range position in Editor
- */
-function getDOMelementPosition(DOM, DOMelem) {
-	// Get the node location
-
-	const nodeElem = DOM.nodeLocation(DOMelem);
-
-	// Set the range of text the header in error
-	const elemRange = new vscode.Range(
-		nodeElem.startTag.startLine - 1,
-		nodeElem.startTag.startCol - 1,
-		nodeElem.startTag.endLine - 1,
-		nodeElem.startTag.endCol - 1);
-
-	return elemRange;
-}
 
 
 /** ***********************************************************************************************
  * Method to validate anchor link
  * If an issue then a Diagnostic is added to the 'Problems' tab
- * @param {String} anchorLink 
+ * @param {JSDOM.nodeElem} elem
  * @param {JSDOM} DOM 
  */
-function checkAnchorError(elem, DOM) {
+function validateAnchor(elem, DOM) {
 
 	const anchorLink = elem.getAttribute('href').replace(/^#/g, '');
 
 	const anchor = DOM.window.document.querySelectorAll("[id='" + anchorLink + "']");
 	if (anchor.length == 0) {
-		addDiagnostic(new LinkResult(anchorLink, myErrorCodeURL.noAnchor, true), getDOMelementPosition(DOM, elem));
+		addDiagnostic(new LinkResult(anchorLink, myErrorCodeURL.noAnchor, true), genFunc.getDOMelementPosition(DOM, elem));
 	} else if (anchor.length > 1) {
-		addDiagnostic(new LinkResult(anchorLink, myErrorCodeURL.multipleAnchor, true), getDOMelementPosition(DOM, elem));
+		addDiagnostic(new LinkResult(anchorLink, myErrorCodeURL.multipleAnchor, true), genFunc.getDOMelementPosition(DOM, elem));
 	}
 }
 
@@ -217,13 +199,12 @@ function analyze_URL_Type(domElem) {
  * If adresse is an email (mailto:), it's not validate with this method.
  * If the domain of the URl is in the ban list, it's not check too
  */
-function checkAlltags_A() {
-	// clear all previous diagnostics
-	//links_checker_diagColl.clear();
+function mainValidationProcess() {
+	// clear all previous diagnostics of the Active Editor
 	links_checker_diagColl.delete(vscode.window.activeTextEditor.document.uri);
 
-	// Get the selected text/All text in the active Editor
-	const curContent = genFunc.getTextSelected(true);
+	// Get All the text in the active Editor
+	const curContent = vscode.window.activeTextEditor.document.getText();
 
 	// Create a DOM from the selected text
 	let myDOM = new JSDOM(curContent, { includeNodeLocations: true, contentType: "text/html" });
@@ -237,7 +218,7 @@ function checkAlltags_A() {
 		let urlType = analyze_URL_Type(elem);
 		switch (urlType) {
 			case URLType.isEmpty:			// No URL in the A tag no href, or href is empty
-				addDiagnostic(new LinkResult("NO-URL", myErrorCodeURL.noURL, true), getDOMelementPosition(myDOM, elem));
+				addDiagnostic(new LinkResult("NO-URL", myErrorCodeURL.noURL, true), genFunc.getDOMelementPosition(myDOM, elem));
 				break;
 			case URLType.isEmail:
 				// Nothing to do for the moment
@@ -248,23 +229,27 @@ function checkAlltags_A() {
 			case URLType.isLocalFile:		// Protocol is FILE:
 				// Nothing to do for the moment
 				// TODO: valide if url contains spaces instead of %20 et \ instead of /
-				//hasError = checkLocalFileError(elem.href);
+				// addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.localfile, true), getDOMelementPosition(myDOM, elem));
 				break;
 			case URLType.isRelative:		// URL is a relative URL starting with .. or having no /
-				addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.relative, true), getDOMelementPosition(myDOM, elem));
+				addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.relative, true), genFunc.getDOMelementPosition(myDOM, elem));
 				break;
 			// URL is an anchor
 			case URLType.isAnchor:
-				checkAnchorError(elem, myDOM);
+				validateAnchor(elem, myDOM);
 				break;
 			// URL is an Internal link without domain, it start with /
 			case URLType.isInternal:
 				let siteDomainName = vscode.workspace.getConfiguration("html-links-checker").domain;
-				checkLinkError(siteDomainName + elem.href, getDOMelementPosition(myDOM, elem));
+				validateLink(siteDomainName + elem.href, genFunc.getDOMelementPosition(myDOM, elem));
 				break;
 			// URL is an External link
 			case URLType.isExternal:
-				checkLinkError(elem.href, getDOMelementPosition(myDOM, elem));
+				validateLink(elem.href, genFunc.getDOMelementPosition(myDOM, elem));
+				// Check if accessibility for External link must be processed
+				if (vscode.workspace.getConfiguration("html-links-checker").validateExternalLinkAccessibility){
+					validateExternalAccessibility(elem, myDOM);
+				}
 				break;
 			// URL is part of the excluded domain list
 			case URLType.isExcluded:
@@ -284,7 +269,7 @@ function checkAlltags_A() {
  * @param {String} method The method to use to check URL (head or get)
  * @param {String} initialLink Used only if URL is redirected, this parameters is the initial URL checked
  */
-function checkLinkError(link, linkRange, method = 'head', initialLink = '') {
+function validateLink(link, linkRange, method = 'head', initialLink = '') {
 	const options = {
 		// If needle option are required, put here
 	};
@@ -294,7 +279,7 @@ function checkLinkError(link, linkRange, method = 'head', initialLink = '') {
 		// If error
 		if (err) {
 			if (method != 'get') {
-				checkLinkError(link, linkRange, "get", initialLink);
+				validateLink(link, linkRange, "get", initialLink);
 			} else if (method === 'get') {
 				//console.log("ERREUR: " + method + " | " + link + " | " + initialLInk);
 				addDiagnostic(new LinkResult(link, 404, true), linkRange);
@@ -303,14 +288,14 @@ function checkLinkError(link, linkRange, method = 'head', initialLink = '') {
 		// If redirection
 		else if (Math.trunc(resp.statusCode / 100) == 3) {
 			// Check if the redirection link is working
-			checkLinkError(resp.headers.location, linkRange, "head", link);
+			validateLink(resp.headers.location, linkRange, "head", link);
 		}
 		// If status is different than 200
 		else if (resp.statusCode != 200) {
 			// Check if the method is different than get to not loop forever
 			if (method != 'get') {
 				// Check the link again but with the "get" method instead of "head"
-				checkLinkError(link, linkRange, "get", initialLink);
+				validateLink(link, linkRange, "get", initialLink);
 			} else if (method === 'get') {
 				//console.log(method + " | " + link + " | " + resp.statusCode + " | " + initialLInk);
 				addDiagnostic(new LinkResult(link, resp.statusCode, true), linkRange);
@@ -348,7 +333,7 @@ function addDiagnostic(linkresult, linkRange) {
 	// If the status code is an empty A tag (no URL)
 	else if (linkresult.statusCode == myErrorCodeURL.noURL) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
-			'Link error: Anchor is not existing in the code.', linkRange, vscode.DiagnosticSeverity.Error);
+			'"A" tag has no URL.', linkRange, vscode.DiagnosticSeverity.Error);
 	}
 	// If the status code is an anchor inexistant
 	else if (linkresult.statusCode == myErrorCodeURL.noAnchor) {
@@ -361,6 +346,11 @@ function addDiagnostic(linkresult, linkRange) {
 			'Link error: More than one anchor (ID) exist in the code. Only one ID must be presents.', linkRange, vscode.DiagnosticSeverity.Error);
 	}
 	// If the status code is relative from the folder not the root
+	else if (linkresult.statusCode == myErrorCodeURL.extLinkAccessibility) {
+		theDiag = new linkDiagnostic(linkresult.statusCode,
+			'Link is not accessible.', linkRange, vscode.DiagnosticSeverity.Warning);
+	}
+	// If the status code is relative from the folder not the root
 	else if (linkresult.statusCode == myErrorCodeURL.relative) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
 			'Link is relative from folder instead of root site OR link is mistyped. Validation impossible, it must be validate manually.', linkRange, vscode.DiagnosticSeverity.Warning);
@@ -368,7 +358,7 @@ function addDiagnostic(linkresult, linkRange) {
 	// send an error for all other kind of error
 	else {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
-			'Link error: Must be updated or removed.', linkRange, vscode.DiagnosticSeverity.Error);
+			'Link error: Link is not working. It must be updated or removed.', linkRange, vscode.DiagnosticSeverity.Error);
 	}
 
 	// Add the error in the array of diagnostics and display it in the 'Problems' tab
@@ -377,3 +367,41 @@ function addDiagnostic(linkresult, linkRange) {
 	links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, myDiagnostics);
 }
 
+
+/** ***********************************************************************************************
+ * Method checks if this external link is compliant with accessibility
+ * Check for the attribute 'rel="external"' and if link text contain (external link)
+ * @param {JSDOM.nodeElem} DOMelem
+ * @param {JSDOM} DOM 
+ */
+function validateExternalAccessibility(elem, myDOM) {
+	// check if link could be internal link (domain)
+	let localDomain = vscode.workspace.getConfiguration("html-links-checker").domain;
+	localDomain = localDomain.replace(/^(\w*\:\/\/)?(www\.)?(.+)/gmi, "$3");
+	if (elem.href.search(localDomain) > -1) {
+		// The URL contains the local domain. So exit without any action.
+		return;
+	}
+
+	let relIsMissing = false
+	const externalAttribute = elem.getAttribute('rel');
+	if (externalAttribute == null || externalAttribute != "external") {
+		relIsMissing = true;
+	}
+	
+	let externalTextIsMissing = true;
+	if (vscode.workspace.getConfiguration("html-links-checker").externalLinkText.length > 0) {
+		const externalTexts = vscode.workspace.getConfiguration("html-links-checker").externalLinkText;
+		for (let x=0; x<externalTexts.length; x++){
+			const regpattern = new RegExp(externalTexts[x], "gi");
+			if (elem.innerHTML.match(regpattern) != null){
+				externalTextIsMissing= false;
+				break;
+			}
+		}
+	}
+
+	if (relIsMissing || externalTextIsMissing){
+		addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.extLinkAccessibility, true), genFunc.getDOMelementPosition(myDOM, elem));
+	}
+}

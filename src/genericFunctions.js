@@ -1,5 +1,6 @@
 "use strict";
 const vscode = require('vscode');
+const JSDOM = require('jsdom').JSDOM;
 
 module.exports = {
 
@@ -130,5 +131,26 @@ module.exports = {
     } else {
       return true;
     }
+  },
+
+
+
+  /** ***********************************************************************************************
+   * @param {JSDOM} DOM 
+   * @param {JSDOM.nodeElem} DOMelem Element of DOM to get the range position in Editor
+   */
+  getDOMelementPosition: function getDOMelementPosition(DOM, DOMelem) {
+    // Get the node location
+
+    const nodeElem = DOM.nodeLocation(DOMelem);
+
+    // Set the range of text the header in error
+    const elemRange = new vscode.Range(
+      nodeElem.startTag.startLine - 1,
+      nodeElem.startTag.startCol - 1,
+      nodeElem.startTag.endLine - 1,
+      nodeElem.startTag.endCol - 1);
+
+    return elemRange;
   }
 };

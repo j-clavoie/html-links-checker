@@ -10,7 +10,9 @@
 	"categories": [
 		"Linters"
 	],
-	"author": {"name": "J-C Lavoie"},
+	"author": {
+		"name": "J-C Lavoie"
+	},
 	"keywords": [
 		"html",
 		"link",
@@ -42,15 +44,28 @@
 				"html-links-checker.excludedDomains": {
 					"description": "Specifies all domains to not check (without protocol). Example: google.com",
 					"type": "array"
+				},
+				"html-links-checker.validateExternalLinkAccessibility": {
+					"description": "Specifies if accessibility for external link must be validated",
+					"type": "boolean",
+					"default": true
+				},
+				"html-links-checker.externalLinkText": {
+					"description": "Specifies string that should be included in external link text to be accessible",
+					"type": "array",
+					"default": [
+						"external link",
+						"lien externe"
+					]
 				}
 			}
 		}
 	},
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/skinless-1/html-links-checker.git"
-  },
-  "homepage": "https://github.com/skinless-1/html-links-checker",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/skinless-1/html-links-checker.git"
+	},
+	"homepage": "https://github.com/skinless-1/html-links-checker",
 	"scripts": {
 		"lint": "eslint .",
 		"pretest": "npm run lint",
