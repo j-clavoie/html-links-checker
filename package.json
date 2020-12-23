@@ -25,7 +25,7 @@
 		"jsdom": "^16.4.0",
 		"needle": "^2.5.2"
 	},
-	"main": "./src/extension.js",
+	"main": "./dist/extension.js",
 	"contributes": {
 		"commands": [
 			{
