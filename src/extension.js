@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const genFunc = require('../lib/genericFunctions');
+const genFunc = require('./genericFunctions');
 const needle = require('needle');
 const JSDOM = require('jsdom').JSDOM
 
@@ -9,12 +9,10 @@ const JSDOM = require('jsdom').JSDOM
 const links_checker_diagColl = vscode.languages.createDiagnosticCollection("html-link-checker");
 
 // Use to clear the "Problems" Tab when we close the file
-// TODO: Not working properly - Will clear all error when we close one file...
 vscode.workspace.onDidCloseTextDocument(function (listener) {
 	// clear all previous diagnostics
-	//links_checker_diagColl.clear();
 	links_checker_diagColl.delete(listener.uri);
-	//links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, undefined);
+	// links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, undefined);
 	links_checker_diagColl.set(listener.uri, undefined );
 });
 
@@ -24,11 +22,10 @@ vscode.workspace.onDidCloseTextDocument(function (listener) {
  */
 function activate(context) {
 
-	let disposable = vscode.commands.registerCommand('html-links-checker.a_tag', function () {
+	let disposable = vscode.commands.registerCommand('html-links-checker.start', function () {
 		links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, []);
 		// Check all A tags
 		checkAlltags_A();
-
 	});
 
 
@@ -188,12 +185,8 @@ function analyze_URL_Type(domElem) {
 		const excludedDomainsList = vscode.workspace.getConfiguration("html-links-checker").excludedDomains;
 		if (excludedDomainsList.length > 0) {
 			let exclError = false;
-
 			excludedDomainsList.forEach(function (edl) {
-				let regexttstr = "/" + edl + "/";
-				regexttstr.replace(".", "\\.");
-				const regexttPatern = new RegExp(regexttstr, "gi");
-				if (elemURL.match(regexttPatern) > 0) {
+				if (elemURL.search(edl) > -1) {
 					exclError = true;
 				}
 			});
