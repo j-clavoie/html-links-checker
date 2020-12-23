@@ -83,15 +83,16 @@ class linkDiagnostic {
  * My personnal Types of URL
  */
 const URLType = {
-	isEmpty: null,
-	isExcluded: -1,
-	isExternal: 1,
-	isInternal: 2,
-	isRelative: 3,
-	isEmail: 4,
-	isAnchor: 5,
-	isFTP: 6,
-	isLocalFile: 7
+	isEmpty: 1,
+	isNameless: 2,
+	isExcluded: 3,
+	isExternal: 4,
+	isInternal: 5,
+	isRelative: 6,
+	isEmail: 7,
+	isAnchor: 8,
+	isFTP: 9,
+	isLocalFile: 10
 }
 
 /** ***********************************************************************************************
@@ -99,10 +100,13 @@ const URLType = {
  */
 const myErrorCodeURL = {
 	noURL: 1000,
+	noHttpProcol: 1001,
+	nameless: 1002,
+	extLinkAccessibility: 1100,
 	noAnchor: 1404,
 	multipleAnchor: 1409,
 	relative: 1405,
-	extLinkAccessibility: 1100
+	
 }
 
 
@@ -140,6 +144,11 @@ function analyze_URL_Type(domElem) {
 	// Check if the A tag has no URL
 	if (elemURL == null || elemURL.trim().length == 0) {
 		return URLType.isEmpty;
+	}
+
+	// Check if the name of link is empty (ex.: <a href="http://domain.com"></a>)
+	if (domElem.innerHTML.trim().length == 0) {
+		return URLType.isNameless;
 	}
 
 	// Check if the link is an anchor in the same content (start with #)
@@ -184,7 +193,7 @@ function analyze_URL_Type(domElem) {
 	}
 
 	// Check if the link is an anchor in the same content (start with #)
-	if (elemURL.match(/(^\.\.\/)|^(?!\w*\:)(\w*\.\w*$){1}/gi) != null) {
+	if (elemURL.match(/(^\.(\.)?\/)|^(?!\w*\:)(\w*\.(html|htm|asp|php|txt)){1}\?*/gi) != null) {
 		return URLType.isRelative;
 	}
 
@@ -220,6 +229,9 @@ function mainValidationProcess() {
 			case URLType.isEmpty:			// No URL in the A tag no href, or href is empty
 				addDiagnostic(new LinkResult("NO-URL", myErrorCodeURL.noURL, true), genFunc.getDOMelementPosition(myDOM, elem));
 				break;
+			case URLType.isNameless:	// The link has no name (empty tag: <a href="http://domain.com"></a>)
+				addDiagnostic(new LinkResult("Link without name", myErrorCodeURL.nameless, true), genFunc.getDOMelementPosition(myDOM, elem));
+				break;
 			case URLType.isEmail:
 				// Nothing to do for the moment
 				break;
@@ -231,7 +243,7 @@ function mainValidationProcess() {
 				// TODO: valide if url contains spaces instead of %20 et \ instead of /
 				// addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.localfile, true), getDOMelementPosition(myDOM, elem));
 				break;
-			case URLType.isRelative:		// URL is a relative URL starting with .. or having no /
+			case URLType.isRelative:		// URL is a relative URL starting with . or .. or having no /
 				addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.relative, true), genFunc.getDOMelementPosition(myDOM, elem));
 				break;
 			// URL is an anchor
@@ -273,6 +285,11 @@ function validateLink(link, linkRange, method = 'head', initialLink = '') {
 	const options = {
 		// If needle option are required, put here
 	};
+
+	// Validate if URL contains protocol (http://)
+	if (link.match(/^http(s?)\:\/\//gi) == null){
+		addDiagnostic(new LinkResult(link, myErrorCodeURL.noHttpProcol, true), linkRange);
+	}
 
 	// use needle to check the link
 	needle(method, link, options, function (err, resp) {
@@ -331,9 +348,19 @@ function addDiagnostic(linkresult, linkRange) {
 			'Link error: Authentication required. Validation must be done manually.', linkRange, vscode.DiagnosticSeverity.Error);
 	}
 	// If the status code is an empty A tag (no URL)
+	else if (linkresult.statusCode == myErrorCodeURL.nameless) {
+		theDiag = new linkDiagnostic(linkresult.statusCode,
+			'"A" tag is empty (no name/text). It must be removed or a name/text must be added.', linkRange, vscode.DiagnosticSeverity.Error);
+	}
+	// If the status code is an empty A tag (no URL)
 	else if (linkresult.statusCode == myErrorCodeURL.noURL) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
 			'"A" tag has no URL.', linkRange, vscode.DiagnosticSeverity.Error);
+	}
+	// If the status code is an anchor inexistant
+	else if (linkresult.statusCode == myErrorCodeURL.noHttpProcol) {
+		theDiag = new linkDiagnostic(linkresult.statusCode,
+			'Protocol (http://) is missing in the URL. It should be added.', linkRange, vscode.DiagnosticSeverity.Warning);
 	}
 	// If the status code is an anchor inexistant
 	else if (linkresult.statusCode == myErrorCodeURL.noAnchor) {
@@ -353,7 +380,7 @@ function addDiagnostic(linkresult, linkRange) {
 	// If the status code is relative from the folder not the root
 	else if (linkresult.statusCode == myErrorCodeURL.relative) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
-			'Link is relative from folder instead of root site OR link is mistyped. Validation impossible, it must be validate manually.', linkRange, vscode.DiagnosticSeverity.Warning);
+			'Link is relative from folder instead of root site OR link is mistyped. Validation impossible for the moment, it must be validate manually.', linkRange, vscode.DiagnosticSeverity.Warning);
 	}
 	// send an error for all other kind of error
 	else {

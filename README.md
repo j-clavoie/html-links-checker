@@ -11,6 +11,7 @@ For the moment, this extension checks:
 + if link is redirected and what's the new URL (redirection)
 + if link is NOT working (including links that require authentication)
 + if A tag is empty (no href or empty href)
++ if A tag without text (ex.: <a href="XXX"></a>)
 + if accessibility requirements are set for external link.
 
 The extension can't validate links that:
