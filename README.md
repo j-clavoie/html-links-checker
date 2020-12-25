@@ -22,8 +22,7 @@ The extension can't validate links that:
 + point to local file (```file://```)
 
 ## How to use
-The whole contain of the active text editor is used for validation.
-For the moment it's not possible to validate only a part of the code.
+The extension uses the selected text or the whole content (if no selection).
 
 Trigger the extension by using <kbd>CTRL</kbd>+<kbd>SHIFT</kbd>+<kbd>P</kbd> and typing "html link checker".
 Use the Visual Studio Code's **Problems tab** to review errors/warnings and apply appropriate action.

@@ -212,8 +212,9 @@ function mainValidationProcess() {
 	// clear all previous diagnostics of the Active Editor
 	links_checker_diagColl.delete(vscode.window.activeTextEditor.document.uri);
 
-	// Get All the text in the active Editor
-	const curContent = vscode.window.activeTextEditor.document.getText();
+	// Get text (selection or whole text) in the active editor
+	//const curContent = vscode.window.activeTextEditor.document.getText();
+	const curContent = genFunc.getTextSelected(true);
 
 	// Create a DOM from the selected text
 	let myDOM = new JSDOM(curContent, { includeNodeLocations: true, contentType: "text/html" });

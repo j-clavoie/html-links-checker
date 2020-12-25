@@ -1,5 +1,9 @@
 # Change Log
-## [Unreleased]
+
+## [1.0.2] - 
++ Allow validation in a part of the code (selected text).
+  If no text selected the whole content is selected.
++ Minors fixes and improvement in the code
 
 
 ## [1.0.1] - 2020-12-23
