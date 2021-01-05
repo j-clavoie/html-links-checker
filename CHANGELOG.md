@@ -1,9 +1,14 @@
 # Change Log
 
-## [1.0.2] - 
+# **A bug when code contains many URL to validate, must be executed twice in short time** 
+# The extension has been published to test it on different computer
+# A new version comming soon
+
+## [1.0.2] - 2021-01-04
 + Allow validation in a part of the code (selected text).
   If no text selected the whole content is selected.
 + Minors fixes and improvement in the code
++ Add a Information in the 'Problems' tab when link is part of the excluded domains list.
 
 
 ## [1.0.1] - 2020-12-23

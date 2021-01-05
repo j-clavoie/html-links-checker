@@ -1,7 +1,8 @@
 const vscode = require('vscode');
 const genFunc = require('./genericFunctions');
 const needle = require('needle');
-const JSDOM = require('jsdom').JSDOM
+// const urllib = require('urllib') https://www.npmjs.com/package/urllib
+const JSDOM = require('jsdom').JSDOM;
 
 
 // Create a new Collection for Diagnostics
@@ -47,15 +48,15 @@ module.exports = {
 
 /** ***********************************************************************************************
  * Object to put Links report informations for analyze
- * @property {String} link The URL to analyze
- * @property {Number} statusCode The status code returned by the server
- * @property {Boolean} hasError This link has error
- * @property {String} errorMsg The error message to display in the 'Problems' tab
- * @property {vscode.DiagnosticSeverity} errorLevel The type of diagnostic error
- * @property {Boolean} redirected This link is redirected (default: False)
- * @property {String} redirectionLink The new URL if redirected
  */
 class LinkResult {
+	/**
+	* @param {String} link The URL to analyze (really used only with redirection)
+	* @param {Number} statusCode The status code returned by the server
+	* @param {Boolean} hasError This link has error
+	* @param {Boolean} redirected This link is redirected (default: False)
+	* @param {String} redirectionLink The new URL if redirected
+		**/
 	constructor(link, statusCode, hasError, redirected, redirectionLink) {
 		this.link = link;
 		this.statusCode = statusCode || 0;
@@ -65,11 +66,17 @@ class LinkResult {
 	}
 }
 
-
 /** ***********************************************************************************************
  * Object Diagnostic.
  */
 class linkDiagnostic {
+	/**
+	 * 
+	 * @param {Number} code 
+	 * @param {String} message 
+	 * @param {vscode.Range} range 
+	 * @param {vscode.DiagnosticSeverity} severity 
+	 */
 	constructor(code, message, range, severity) {
 		this.code = code || 0,
 			this.message = message || '',
@@ -99,14 +106,15 @@ const URLType = {
  * My personnal status code
  */
 const myErrorCodeURL = {
+	excludedDomain: 999,
 	noURL: 1000,
 	noHttpProcol: 1001,
 	nameless: 1002,
 	extLinkAccessibility: 1100,
 	noAnchor: 1404,
-	multipleAnchor: 1409,
 	relative: 1405,
-	
+	multipleAnchor: 1409,
+	redirectionNotWorking: 3004
 }
 
 
@@ -233,6 +241,10 @@ function mainValidationProcess() {
 			case URLType.isNameless:	// The link has no name (empty tag: <a href="http://domain.com"></a>)
 				addDiagnostic(new LinkResult("Link without name", myErrorCodeURL.nameless, true), genFunc.getDOMelementPosition(myDOM, elem));
 				break;
+			// URL is part of the excluded domain list
+			case URLType.isExcluded:
+				addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.excludedDomain, true), genFunc.getDOMelementPosition(myDOM, elem));
+				break;
 			case URLType.isEmail:
 				// Nothing to do for the moment
 				break;
@@ -260,13 +272,9 @@ function mainValidationProcess() {
 			case URLType.isExternal:
 				validateLink(elem.href, genFunc.getDOMelementPosition(myDOM, elem));
 				// Check if accessibility for External link must be processed
-				if (vscode.workspace.getConfiguration("html-links-checker").validateExternalLinkAccessibility){
+				if (vscode.workspace.getConfiguration("html-links-checker").validateExternalLinkAccessibility) {
 					validateExternalAccessibility(elem, myDOM);
 				}
-				break;
-			// URL is part of the excluded domain list
-			case URLType.isExcluded:
-				// nothing to do
 				break;
 		}
 	});
@@ -283,13 +291,18 @@ function mainValidationProcess() {
  * @param {String} initialLink Used only if URL is redirected, this parameters is the initial URL checked
  */
 function validateLink(link, linkRange, method = 'head', initialLink = '') {
+	// Define needle's option
 	const options = {
-		// If needle option are required, put here
+		//open_timeout: 8000
 	};
 
 	// Validate if URL contains protocol (http://)
-	if (link.match(/^http(s?)\:\/\//gi) == null){
-		addDiagnostic(new LinkResult(link, myErrorCodeURL.noHttpProcol, true), linkRange);
+	if (link.match(/^http(s?)\:\/\//gi) == null) {
+		// If the link comes from a redirection, don't display the error
+		// because the user don't have the control on this error
+		if (initialLink == ''){
+			addDiagnostic(new LinkResult(link, myErrorCodeURL.noHttpProcol, true), linkRange);
+		}
 	}
 
 	// use needle to check the link
@@ -299,13 +312,15 @@ function validateLink(link, linkRange, method = 'head', initialLink = '') {
 			if (method != 'get') {
 				validateLink(link, linkRange, "get", initialLink);
 			} else if (method === 'get') {
-				//console.log("ERREUR: " + method + " | " + link + " | " + initialLInk);
-				addDiagnostic(new LinkResult(link, 404, true), linkRange);
+				if (initialLink != ''){
+					addDiagnostic(new LinkResult(link, myErrorCodeURL.redirectionNotWorking, true), linkRange);
+				} else {
+					addDiagnostic(new LinkResult(link, 404, true), linkRange);
+				}
 			}
 		}
 		// If redirection
 		else if (Math.trunc(resp.statusCode / 100) == 3) {
-			// Check if the redirection link is working
 			validateLink(resp.headers.location, linkRange, "head", link);
 		}
 		// If status is different than 200
@@ -315,13 +330,15 @@ function validateLink(link, linkRange, method = 'head', initialLink = '') {
 				// Check the link again but with the "get" method instead of "head"
 				validateLink(link, linkRange, "get", initialLink);
 			} else if (method === 'get') {
-				//console.log(method + " | " + link + " | " + resp.statusCode + " | " + initialLInk);
 				addDiagnostic(new LinkResult(link, resp.statusCode, true), linkRange);
 			}
 		}
+		// If status is different than 200 and redirection have been processed
+		else if (resp.statusCode != 200 && initialLink != '') {
+				addDiagnostic(new LinkResult(link, myErrorCodeURL.redirectionNotWorking, true), linkRange);
+		}
 		// If the link is OK (status 200) but have been redirected
 		else if (resp.statusCode == 200 && initialLink != '') {
-			//console.log(method + " | " + link + " | " + resp.statusCode + " | " + initialLInk);
 			addDiagnostic(new LinkResult(initialLink, resp.statusCode, true, true, link), linkRange);
 		}
 	});
@@ -340,8 +357,12 @@ function addDiagnostic(linkresult, linkRange) {
 	// If link is redirected but is working = send a warning to update the link
 	if (linkresult.redirected && linkresult.statusCode == 200) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
-			'Link redirected to: "' + linkresult.redirectionLink, linkRange,
-			vscode.DiagnosticSeverity.Warning);
+			'Link redirected to: "' + linkresult.redirectionLink, linkRange, vscode.DiagnosticSeverity.Warning);
+	}
+	// If the link has been redirected but the redirection was not working
+	else if (linkresult.statusCode == myErrorCodeURL.redirectionNotWorking) {
+		theDiag = new linkDiagnostic(linkresult.statusCode,
+			'Link has been redirected but the new URL has not answered. Manual validation is required.', linkRange, vscode.DiagnosticSeverity.Error);
 	}
 	// If the status code is an issue with the authentication = send an error message
 	else if (linkresult.statusCode == 401 || linkresult.statusCode == 403 || linkresult.statusCode == 407) {
@@ -383,6 +404,11 @@ function addDiagnostic(linkresult, linkRange) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
 			'Link is relative from folder instead of root site OR link is mistyped. Validation impossible for the moment, it must be validate manually.', linkRange, vscode.DiagnosticSeverity.Warning);
 	}
+	// If the link is part of the Excluded domain then only add a message to user, only to be sure.
+	else if (linkresult.statusCode == myErrorCodeURL.excludedDomain) {
+		theDiag = new linkDiagnostic(linkresult.statusCode,
+			'Link is a member of the excluded domains list.', linkRange, vscode.DiagnosticSeverity.Information);
+	}
 	// send an error for all other kind of error
 	else {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
@@ -416,20 +442,20 @@ function validateExternalAccessibility(elem, myDOM) {
 	if (externalAttribute == null || externalAttribute != "external") {
 		relIsMissing = true;
 	}
-	
+
 	let externalTextIsMissing = true;
 	if (vscode.workspace.getConfiguration("html-links-checker").externalLinkText.length > 0) {
 		const externalTexts = vscode.workspace.getConfiguration("html-links-checker").externalLinkText;
-		for (let x=0; x<externalTexts.length; x++){
+		for (let x = 0; x < externalTexts.length; x++) {
 			const regpattern = new RegExp(externalTexts[x], "gi");
-			if (elem.innerHTML.match(regpattern) != null){
-				externalTextIsMissing= false;
+			if (elem.innerHTML.match(regpattern) != null) {
+				externalTextIsMissing = false;
 				break;
 			}
 		}
 	}
 
-	if (relIsMissing || externalTextIsMissing){
+	if (relIsMissing || externalTextIsMissing) {
 		addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.extLinkAccessibility, true), genFunc.getDOMelementPosition(myDOM, elem));
 	}
 }
