@@ -1,7 +1,7 @@
 const vscode = require('vscode');
 const genFunc = require('./genericFunctions');
-const needle = require('needle');
-// const urllib = require('urllib') https://www.npmjs.com/package/urllib
+//const needle = require('needle');
+const urllib = require('urllib'); // https://www.npmjs.com/package/urllib
 const JSDOM = require('jsdom').JSDOM;
 
 
