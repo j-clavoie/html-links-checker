@@ -1,6 +1,5 @@
 const vscode = require('vscode');
 const genFunc = require('./genericFunctions');
-//const needle = require('needle');
 const urllib = require('urllib'); // https://www.npmjs.com/package/urllib
 const JSDOM = require('jsdom').JSDOM;
 
@@ -114,7 +113,12 @@ const myErrorCodeURL = {
 	noAnchor: 1404,
 	relative: 1405,
 	multipleAnchor: 1409,
-	redirectionNotWorking: 3004
+	redirected: 3000,
+	redirectionNotWorking: 3004,
+	redirectProtocol: 3100,
+	redirectWWW: 3110,
+	networkError: 8000,
+	connectionTimeout: 8010
 }
 
 
@@ -287,59 +291,101 @@ function mainValidationProcess() {
  * If link is returning something else than status 200 (OK is valid) than a Diagnostic is added to the 'Problems' tab
  * @param {String} link The URL to check
  * @param {vscode.Range} linkRange The position of the link in the Editor
- * @param {String} method The method to use to check URL (head or get)
  * @param {String} initialLink Used only if URL is redirected, this parameters is the initial URL checked
  */
-function validateLink(link, linkRange, method = 'head', initialLink = '') {
+function validateLink(link, linkRange, initialLink = '') {
 	// Define needle's option
 	const options = {
-		//open_timeout: 8000
+		method: vscode.workspace.getConfiguration("html-links-checker").requestMethod,
+		rejectUnauthorized: false,
+		followRedirect: true
 	};
 
 	// Validate if URL contains protocol (http://)
 	if (link.match(/^http(s?)\:\/\//gi) == null) {
 		// If the link comes from a redirection, don't display the error
 		// because the user don't have the control on this error
-		if (initialLink == ''){
+		if (initialLink == '') {
 			addDiagnostic(new LinkResult(link, myErrorCodeURL.noHttpProcol, true), linkRange);
 		}
 	}
 
-	// use needle to check the link
-	needle(method, link, options, function (err, resp) {
+	// Request the URL
+	urllib.request(link, options, function (err, data, resp) {
 		// If error
-		if (err) {
-			if (method != 'get') {
-				validateLink(link, linkRange, "get", initialLink);
-			} else if (method === 'get') {
-				if (initialLink != ''){
-					addDiagnostic(new LinkResult(link, myErrorCodeURL.redirectionNotWorking, true), linkRange);
-				} else {
-					addDiagnostic(new LinkResult(link, 404, true), linkRange);
+		if (err || resp.statusCode != 200) {
+			let cerr;
+			switch (resp.statusCode) {
+				case -1:
+					cerr = myErrorCodeURL.networkError;
+					break;
+				case -2:
+					cerr = myErrorCodeURL.connectionTimeout;
+					break;
+				default:
+					cerr = resp.statusCode;
+					break;
+			}
+			// Add the diagnostic in the 'Problems' tab
+			addDiagnostic(new LinkResult(link, cerr, true), linkRange);
+		} else {
+			// If URL have been redirected then analyze differences
+			if (resp.requestUrls.length > 1) {
+				// Get Extension's properties related to Protocol redirection warning
+				const paramProtocl = vscode.workspace.getConfiguration("html-links-checker").showProtocolRedirectionWarning.toLowerCase();
+				// Get Extension's properties related to WWW redirection warning
+				const paramWWW = vscode.workspace.getConfiguration("html-links-checker").showWwwRedirectionWarning.toLowerCase();
+
+				// Get initial and final URL without the last / (if present)
+				let initialURL = resp.requestUrls[0].replace(/\/$/g, '');
+				let finalURL = resp.requestUrls[resp.requestUrls.length - 1].replace(/\/$/g, '');
+
+				// Apply regex on initial and final URL for following comparaisons
+				initialURL = initialURL.match(/(.*?\:\/\/)(www\.)*(.+?)$/i);
+				finalURL = finalURL.match(/(.*?\:\/\/)(www\.)*(.+?)$/i);
+
+				// Check if the domains (excluding www) are differents
+				const isDomainChanged = initialURL[3] == finalURL[3] ? false : true;
+
+				// Compare the initial's protocol vs final's protocol
+				// Usualy secure is added http -> httpS
+				let isProtocolChanged = initialURL[1] == finalURL[1] ? false : true;
+
+				// Check if WWW has been added or removed from the initial to final URL
+				let isWWWChanged = initialURL[2] == finalURL[2] ? false : true;
+
+
+				if (isDomainChanged) {
+					// Add the diagnostic in the 'Problems' tab
+					addDiagnostic(new LinkResult(initialURL[0], resp.statusCode, true, true, finalURL[0]), linkRange);
+				}
+
+
+				// If this error must not be displayed
+				if (paramProtocl == 'No'.toLowerCase()) {
+					isProtocolChanged = false;
+				}
+				// If protocol has been changed and must be displayed separate OR
+				// if protocol has been changed, no DomainChange applied and must be displayed only alone
+				if ((isProtocolChanged && paramProtocl == 'yes - separate'.toLowerCase()) || 
+					  (isProtocolChanged && isDomainChanged == false && paramProtocl == 'Yes - global'.toLowerCase())) {
+					// Add the diagnostic in the 'Problems' tab
+					addDiagnostic(new LinkResult(initialURL[0], myErrorCodeURL.redirectProtocol, true, true, finalURL[0]), linkRange);
+				}
+
+
+				// If this error must not be displayed
+				if (paramWWW == 'No'.toLowerCase()) {
+					isWWWChanged = false;
+				}
+				// If WWW has been changed and must be displayed separate OR
+				// if WWW has been changed, no DomainChange applied and must be displayed only alone
+				if ((isWWWChanged && paramWWW == 'yes - separate'.toLowerCase()) ||
+					  (isWWWChanged && isDomainChanged == false && paramWWW == 'Yes - global'.toLowerCase())) {
+					// Add the diagnostic in the 'Problems' tab
+					addDiagnostic(new LinkResult(initialURL[0], myErrorCodeURL.redirectWWW, true, true, finalURL[0]), linkRange);
 				}
 			}
-		}
-		// If redirection
-		else if (Math.trunc(resp.statusCode / 100) == 3) {
-			validateLink(resp.headers.location, linkRange, "head", link);
-		}
-		// If status is different than 200
-		else if (resp.statusCode != 200) {
-			// Check if the method is different than get to not loop forever
-			if (method != 'get') {
-				// Check the link again but with the "get" method instead of "head"
-				validateLink(link, linkRange, "get", initialLink);
-			} else if (method === 'get') {
-				addDiagnostic(new LinkResult(link, resp.statusCode, true), linkRange);
-			}
-		}
-		// If status is different than 200 and redirection have been processed
-		else if (resp.statusCode != 200 && initialLink != '') {
-				addDiagnostic(new LinkResult(link, myErrorCodeURL.redirectionNotWorking, true), linkRange);
-		}
-		// If the link is OK (status 200) but have been redirected
-		else if (resp.statusCode == 200 && initialLink != '') {
-			addDiagnostic(new LinkResult(initialLink, resp.statusCode, true, true, link), linkRange);
 		}
 	});
 }
@@ -358,6 +404,16 @@ function addDiagnostic(linkresult, linkRange) {
 	if (linkresult.redirected && linkresult.statusCode == 200) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
 			'Link redirected to: "' + linkresult.redirectionLink, linkRange, vscode.DiagnosticSeverity.Warning);
+	}
+	// If link is redirected and that work but only protocol has been changed
+	else if (linkresult.redirected && linkresult.statusCode == myErrorCodeURL.redirectProtocol) {
+		theDiag = new linkDiagnostic(linkresult.statusCode,
+			'Link redirected but only protocol (HTTP) has been change, new URL is: "' + linkresult.redirectionLink, linkRange, vscode.DiagnosticSeverity.Warning);
+	}
+	// If link is redirected and that work but only WWW has been changed
+	else if (linkresult.redirected && linkresult.statusCode == myErrorCodeURL.redirectWWW) {
+		theDiag = new linkDiagnostic(linkresult.statusCode,
+			'Link redirected but only WWW has been change, new URL is: "' + linkresult.redirectionLink, linkRange, vscode.DiagnosticSeverity.Warning);
 	}
 	// If the link has been redirected but the redirection was not working
 	else if (linkresult.statusCode == myErrorCodeURL.redirectionNotWorking) {

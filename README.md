@@ -29,11 +29,19 @@ Use the Visual Studio Code's **Problems tab** to review errors/warnings and appl
 
 When an error/warning is fixed, the extension must be re-run to remove the link from the Probloms tab. 
 
-## Configuration instructions
-This extension has 4 Properties
 
-### Domain (mandatory)
+## Configuration instructions
+Following are options with descriptions and instructions
+
+### Request Method
+Select the method used to send the request to the URL.
+
+Available options are: **"head"**, "get" or "post.
+
+
+### Local Domain (mandatory)
 Single string that represent the local domain name server. It's added before root relative links. Must include the protocol and no slash at the end (ex.: ```http://www.mydomain.com```, ```https://mydomain.com```)
+
 
 ### Exluded Domains (optional)
 If used, it must be defined in JSON format. It's an array of domain names to not validate. Only include the domaine name without any protocol (ex.: domainname.com)
@@ -44,9 +52,11 @@ If used, it must be defined in JSON format. It's an array of domain names to not
 ]
 ```
 
+
 ### Validate External Link Accessibility
 Boolean value to indicate if the accessibility for external link should processed.
 Default value: True
+
 
 ### External Link Text
 Array of string.
@@ -67,6 +77,21 @@ To add/remove/modify list you must set it in settings directly in JSON
   ]
 }
 ```
+
+### Show Protocol Redirection Warning
+Define how to manage redirection caused only by protocol change (ex.: ```http://``` to ```https://```).
+Available Options:
+  + "yes - separate" : A warning will be added no matter if another error occur for the same link
+  + "Yes - global" : A warning will be added only if no other error are related to this link
+  + "No" : No warning will be added for this kind of redirection.
+
+
+### Show WWW Redirection Warning
+Define how to mange redirection caused only by WWW change (if WWW has been added or removed from the initial URL).
+  + "yes - separate" : A warning will be added no matter if another error occur for the same link
+  + "Yes - global" : A warning will be added only if no other error are related to this link
+  + "No" : No warning will be added for this kind of redirection.
+
 
 ## TODO
 + Validate relative link from folder:

@@ -1,8 +1,15 @@
 # Change Log
 
-# **A bug when code contains many URL to validate, must be executed twice in short time** 
-# The extension has been published to test it on different computer
-# A new version comming soon
+
+## [1.0.3] - 2021-01-06
++ Change node module for URL request from "needle" to "urllib".<br />More powerfull and quicker for my needs
++ Added Extensions's properties to have a better way to display link warning/error
+  + Protocol: This setting is related to redirection caused only by changing the protocl. Example: from ```http``` to ```https```<br />allows to force warning in any case, only display if it's the only error, or no display warning.
+  + WWW: This setting is realted to redirection caused only by adding ```www``` at the domain name.<br />allows to force warning in any case, only display if it's the only error, or no display warning.
+  + Request method: Allow to set the prefered method to use to send request: "head", "get" or "post"
++ Only use the prefered request method instead of re-request URL with "get" when not working with "head". Maybe will re-add this feature later. Future will say.
+
+
 
 ## [1.0.2] - 2021-01-04
 + Allow validation in a part of the code (selected text).

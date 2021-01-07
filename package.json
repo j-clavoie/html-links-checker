@@ -23,7 +23,7 @@
 	],
 	"dependencies": {
 		"jsdom": "^16.4.0",
-		"needle": "^2.5.2"
+		"urllib": "^2.36.1"
 	},
 	"main": "./src/extension.js",
 	"contributes": {
@@ -36,8 +36,13 @@
 		"configuration": {
 			"title": "HTML Links Checker",
 			"properties": {
-				"html-links-checker.domain": {
-					"description": "Specifies the domain name for relative link.",
+				"html-links-checker.requestMethod": {
+					"description": "Specifies the method used to send the URL request.",
+					"enum": ["head", "get", "post"],
+					"default": "head"
+				},
+				"html-links-checker.localDomain": {
+					"description": "Specifies the local domain name to add to relative links starting with a slash (/). Must include de protocol.",
 					"type": "string",
 					"default": "http://YOUR-DOMAIN-HERE"
 				},
@@ -57,6 +62,16 @@
 						"external link",
 						"lien externe"
 					]
+				},
+				"html-links-checker.showProtocolRedirectionWarning": {
+					"description": "Specifies if a warning is displayed when the protocol has changed in URL redirection.",
+					"enum": ["Yes - separate", "Yes - global", "No"],
+					"default": "Yes - separate"
+				},
+				"html-links-checker.showWwwRedirectionWarning": {
+					"description": "Specifies if a warning is displayed when the WWW has changed in URL redirection.",
+					"enum": ["yes - separate", "Yes - global", "No"],
+					"default": "No"
 				}
 			}
 		}
