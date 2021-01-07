@@ -1,6 +1,9 @@
 # Change Log
 
 
+## [1.0.4] - 2021-01-07
++ Extension's property name fixed in code.alias
+
 ## [1.0.3] - 2021-01-06
 + Change node module for URL request from "needle" to "urllib".<br />More powerfull and quicker for my needs
 + Added Extensions's properties to have a better way to display link warning/error

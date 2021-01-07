@@ -269,7 +269,7 @@ function mainValidationProcess() {
 				break;
 			// URL is an Internal link without domain, it start with /
 			case URLType.isInternal:
-				let siteDomainName = vscode.workspace.getConfiguration("html-links-checker").domain;
+				let siteDomainName = vscode.workspace.getConfiguration("html-links-checker").localDomain;
 				validateLink(siteDomainName + elem.href, genFunc.getDOMelementPosition(myDOM, elem));
 				break;
 			// URL is an External link
@@ -408,12 +408,12 @@ function addDiagnostic(linkresult, linkRange) {
 	// If link is redirected and that work but only protocol has been changed
 	else if (linkresult.redirected && linkresult.statusCode == myErrorCodeURL.redirectProtocol) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
-			'Link redirected but only protocol (HTTP) has been change, new URL is: "' + linkresult.redirectionLink, linkRange, vscode.DiagnosticSeverity.Warning);
+			'Link redirected protocol (HTTP) has been changed, redirected to: "' + linkresult.redirectionLink, linkRange, vscode.DiagnosticSeverity.Warning);
 	}
 	// If link is redirected and that work but only WWW has been changed
 	else if (linkresult.redirected && linkresult.statusCode == myErrorCodeURL.redirectWWW) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
-			'Link redirected but only WWW has been change, new URL is: "' + linkresult.redirectionLink, linkRange, vscode.DiagnosticSeverity.Warning);
+			'Link redirected WWW has been changed, redirected to: "' + linkresult.redirectionLink, linkRange, vscode.DiagnosticSeverity.Warning);
 	}
 	// If the link has been redirected but the redirection was not working
 	else if (linkresult.statusCode == myErrorCodeURL.redirectionNotWorking) {
@@ -486,7 +486,7 @@ function addDiagnostic(linkresult, linkRange) {
  */
 function validateExternalAccessibility(elem, myDOM) {
 	// check if link could be internal link (domain)
-	let localDomain = vscode.workspace.getConfiguration("html-links-checker").domain;
+	let localDomain = vscode.workspace.getConfiguration("html-links-checker").localDomain;
 	localDomain = localDomain.replace(/^(\w*\:\/\/)?(www\.)?(.+)/gmi, "$3");
 	if (elem.href.search(localDomain) > -1) {
 		// The URL contains the local domain. So exit without any action.
