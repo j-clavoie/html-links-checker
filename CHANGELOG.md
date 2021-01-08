@@ -1,8 +1,17 @@
 # Change Log
 
+## [1.0.7] - 2021-01-08
++ Remove validation of space in local file (FILE:)
++ changes some useless part of code
+
+## [1.0.6] - 2021-01-08
++ Trying to fix a bug on Windows that don't have on Linux
+
+## [1.0.5] - 2021-01-08
++ Little bug fixed and adding a temporary variable watcher 
 
 ## [1.0.4] - 2021-01-07
-+ Extension's property name fixed in code.alias
++ Extension's property name fixed in code.
 
 ## [1.0.3] - 2021-01-06
 + Change node module for URL request from "needle" to "urllib".<br />More powerfull and quicker for my needs

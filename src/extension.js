@@ -109,10 +109,12 @@ const myErrorCodeURL = {
 	noURL: 1000,
 	noHttpProcol: 1001,
 	nameless: 1002,
+	spaceInLocalFile: 1100,
+	backSlashInLocalFile: 1101,
 	extLinkAccessibility: 1100,
 	noAnchor: 1404,
-	relative: 1405,
-	multipleAnchor: 1409,
+	multipleAnchor: 1405,
+	relative: 1410,
 	redirected: 3000,
 	redirectionNotWorking: 3004,
 	redirectProtocol: 3100,
@@ -255,10 +257,10 @@ function mainValidationProcess() {
 			case URLType.isFTP:
 				// Nothing to do for the moment
 				break;
-			case URLType.isLocalFile:		// Protocol is FILE:
-				// Nothing to do for the moment
-				// TODO: valide if url contains spaces instead of %20 et \ instead of /
-				// addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.localfile, true), getDOMelementPosition(myDOM, elem));
+			case URLType.isLocalFile:
+				// Protocol is FILE:
+				// Not sure to validate 
+				validateLocalFileLink(elem.href, genFunc.getDOMelementPosition(myDOM, elem));
 				break;
 			case URLType.isRelative:		// URL is a relative URL starting with . or .. or having no /
 				addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.relative, true), genFunc.getDOMelementPosition(myDOM, elem));
@@ -390,7 +392,17 @@ function validateLink(link, linkRange, initialLink = '') {
 	});
 }
 
-
+/**
+ * Method checks if the local file URL contains backslash (\) or spaces 
+ * @param {String} link The URL to check
+ * @param {vscode.Range} linkRange The position of the link in the Editor
+ */
+function validateLocalFileLink(link, linkRange){
+	const checkSpaces = link.match(/\s/gi);
+	if (checkSpaces == undefined || checkSpaces == null){
+//		addDiagnostic(new LinkResult(link, myErrorCodeURL.spaceInLocalFile, true), linkRange);
+	}
+}
 
 /** ***********************************************************************************************
  * Method to define a diagnostic (including message) and display it in the 'Problems' tab
@@ -420,10 +432,15 @@ function addDiagnostic(linkresult, linkRange) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
 			'Link has been redirected but the new URL has not answered. Manual validation is required.', linkRange, vscode.DiagnosticSeverity.Error);
 	}
+	// If local file contains spaces
+	else if (linkresult.statusCode == myErrorCodeURL.spaceInLocalFile) {
+		theDiag = new linkDiagnostic(linkresult.statusCode,
+			'Link contains space(s) and should be replaced by "%20". URL shouldn\'t have spaces.', linkRange, vscode.DiagnosticSeverity.Warning);
+	}
 	// If the status code is an issue with the authentication = send an error message
 	else if (linkresult.statusCode == 401 || linkresult.statusCode == 403 || linkresult.statusCode == 407) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
-			'Link error: Authentication required. Validation must be done manually.', linkRange, vscode.DiagnosticSeverity.Error);
+			'Link error: Authentication required. Validation must be done manually. (' + linkresult.link + ')', linkRange, vscode.DiagnosticSeverity.Error);
 	}
 	// If the status code is an empty A tag (no URL)
 	else if (linkresult.statusCode == myErrorCodeURL.nameless) {
@@ -435,7 +452,7 @@ function addDiagnostic(linkresult, linkRange) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
 			'"A" tag has no URL.', linkRange, vscode.DiagnosticSeverity.Error);
 	}
-	// If the status code is an anchor inexistant
+	// If the status code is no protocol
 	else if (linkresult.statusCode == myErrorCodeURL.noHttpProcol) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
 			'Protocol (http://) is missing in the URL. It should be added.', linkRange, vscode.DiagnosticSeverity.Warning);
@@ -468,7 +485,7 @@ function addDiagnostic(linkresult, linkRange) {
 	// send an error for all other kind of error
 	else {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
-			'Link error: Link is not working. It must be updated or removed.', linkRange, vscode.DiagnosticSeverity.Error);
+			'Link error: Link is not working. It must be updated or removed.' + linkresult.link + ')', linkRange, vscode.DiagnosticSeverity.Error);
 	}
 
 	// Add the error in the array of diagnostics and display it in the 'Problems' tab

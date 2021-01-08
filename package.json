@@ -2,10 +2,10 @@
 	"name": "html-links-checker",
 	"displayName": "HTML Links Checker",
 	"description": "Tools to validate HTML link in the text editor. Result are shown in the 'Problems' tab",
-	"version": "1.0.5",
+	"version": "1.0.7",
 	"publisher": "j-clavoie",
 	"engines": {
-		"vscode": "^1.30.0"
+		"vscode": "^1.52.0"
 	},
 	"categories": [
 		"Linters"
@@ -38,13 +38,17 @@
 			"properties": {
 				"html-links-checker.requestMethod": {
 					"description": "Specifies the method used to send the URL request.",
-					"enum": ["head", "get", "post"],
+					"enum": [
+						"head",
+						"get",
+						"post"
+					],
 					"default": "head"
 				},
 				"html-links-checker.localDomain": {
 					"description": "Specifies the local domain name to add to relative links starting with a slash (/). Must include de protocol.",
 					"type": "string",
-					"default": "http://YOUR-DOMAIN-HERE"
+					"default": "https://YOUR_DOMAIN_NAME_HERE"
 				},
 				"html-links-checker.excludedDomains": {
 					"description": "Specifies all domains to not check (without protocol). Example: google.com",
@@ -65,12 +69,20 @@
 				},
 				"html-links-checker.showProtocolRedirectionWarning": {
 					"description": "Specifies if a warning is displayed when the protocol has changed in URL redirection.",
-					"enum": ["Yes - separate", "Yes - global", "No"],
+					"enum": [
+						"Yes - separate",
+						"Yes - global",
+						"No"
+					],
 					"default": "Yes - separate"
 				},
 				"html-links-checker.showWwwRedirectionWarning": {
 					"description": "Specifies if a warning is displayed when the WWW has changed in URL redirection.",
-					"enum": ["yes - separate", "Yes - global", "No"],
+					"enum": [
+						"yes - separate",
+						"Yes - global",
+						"No"
+					],
 					"default": "No"
 				}
 			}
@@ -95,7 +107,7 @@
 		"@types/glob": "^7.1.3",
 		"@types/mocha": "^8.0.0",
 		"@types/node": "^12.11.7",
-		"@types/vscode": "^1.30.0",
+		"@types/vscode": "^1.52.0",
 		"eslint": "^7.9.0",
 		"glob": "^7.1.6",
 		"mocha": "^8.1.3",
