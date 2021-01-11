@@ -10,11 +10,6 @@
 + Vérifier s'il serait préférable de remplacer le ../ par la partie du path manquantes et tester le lien avec les fonctions existantes (validateLink). Permettrait de savoir si le lien fonctionne sur le serveur plutôt qu'être "présent" sur le serveur
 
 
-## Redirection
-+ Est-ce qu'une redirection vers "www" ne devrait pas être considéré comme valide et ne rien afficher à l'utilisateur?<br />
-exemple: https://domain.com est redirigé vers https://www.domain.com c'est la même chose.alias
-
-
 ## Validation accessibilité lien externes
 + Les expressions (external link et lien externe) ne semblent pas être validés correctement
 + ne pas valider si les expression sont présentes lorsque c'est un lien interne
@@ -30,7 +25,6 @@ exemple: https://domain.com est redirigé vers https://www.domain.com c'est la m
 + Indiquer les problèmes potentiel dans les liens FILE://
   + espace devrait être remplacés par %20
   + \ par /
-(AJOUTER dans mon autre extension HTML CODE CLEANER une option pour nettoyer les liens)
 
 ## Quick fix
 + Développer les quick fix :

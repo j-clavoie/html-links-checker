@@ -103,8 +103,8 @@ module.exports = {
     // Display the dropdown popup to user
     const langName = await vscode.window.showQuickPick(listLang, options);
     // If Escape key has been used = exit without any other process
-    if (langName == undefined) {
-      return null;
+    if (langName == undefined || langName == null) {
+      return -1;
     }
 
     // Define de default return for this function (null)
