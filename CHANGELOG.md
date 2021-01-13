@@ -1,5 +1,9 @@
 # Change Log
 
+## [1.0.8] - 2021-01-12
++ Test to fix working link but displayed as error.<br>
+  It's temporary. The code is reviewed and big change will come.
+
 ## [1.0.7] - 2021-01-08
 + Remove validation of space in local file (FILE:)
 + changes some useless part of code

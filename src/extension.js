@@ -24,7 +24,7 @@ function activate(context) {
 	let disposable = vscode.commands.registerCommand('html-links-checker.start', function () {
 		links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, []);
 		// Main process - Validate all URL 
-		mainValidationProcess();
+		main_Validation_Process();
 	});
 
 
@@ -132,7 +132,7 @@ const myErrorCodeURL = {
  * @param {JSDOM.nodeElem} elem
  * @param {JSDOM} DOM 
  */
-function validateAnchor(elem, DOM) {
+function validate_Anchor(elem, DOM) {
 
 	const anchorLink = elem.getAttribute('href').replace(/^#/g, '');
 
@@ -152,37 +152,39 @@ function validateAnchor(elem, DOM) {
  * @param {JSON.nodeElem} domElem Represent an elemnt of the DOM (A tag)
  */
 function analyze_URL_Type(domElem) {
+	let urlTypeReturn = [];
+
 	// Check if the link is OK (status 200), else add diagnostics in the "Problems" tab
 	const elemURL = domElem.getAttribute('href');
 
 	// Check if the A tag has no URL
 	if (elemURL == null || elemURL.trim().length == 0) {
-		return URLType.isEmpty;
+		urlTypeReturn.push(URLType.isEmpty);
 	}
 
 	// Check if the name of link is empty (ex.: <a href="http://domain.com"></a>)
 	if (domElem.innerHTML.trim().length == 0) {
-		return URLType.isNameless;
+		urlTypeReturn.push(URLType.isNameless);
 	}
 
 	// Check if the link is an anchor in the same content (start with #)
 	if (elemURL.match(/^#/g) != null) {
-		return URLType.isAnchor;
+		urlTypeReturn.push(URLType.isAnchor);
 	}
 
 	// Check if the URL is an email
 	if (elemURL.match(/^\s*mailto\:/gmi) != null) {
-		return URLType.isEmail;
+		urlTypeReturn.push(URLType.isEmail);
 	}
 
 	// Check if the URL is an FTP link
 	if (elemURL.match(/^\s*ftp\:/gmi) != null) {
-		return URLType.isFTP;
+		urlTypeReturn.push(URLType.isFTP);
 	}
 
-	// Check if the URL is a local file link
+	// Check if the URL is a local file link (file://)
 	if (elemURL.match(/^\s*file\:/gmi) != null) {
-		return URLType.isLocalFile;
+		urlTypeReturn.push(URLType.isLocalFile);
 	}
 
 	// Check if the URL is excluded (from Extension's properties)
@@ -196,24 +198,30 @@ function analyze_URL_Type(domElem) {
 				}
 			});
 			if (exclError) {
-				return URLType.isExcluded;
+				urlTypeReturn.push(URLType.isExcluded);
 			}
 		}
 	}
 
 	// Check if the link is relative internal (start with /)
 	if (elemURL.match(/^(\/{1})/g) != null) {
-		return URLType.isInternal;
+		urlTypeReturn.push(URLType.isInternal);
 	}
 
-	// Check if the link is an anchor in the same content (start with #)
+	// Check if the link is relative from the current folder
+	//(start with .. or nothing and ends with web file extension: html, htm, asp, php, txt)
 	if (elemURL.match(/(^\.(\.)?\/)|^(?!\w*\:)(\w*\.(html|htm|asp|php|txt)){1}\?*/gi) != null) {
-		return URLType.isRelative;
+		urlTypeReturn.push(URLType.isRelative);
 	}
 
 	// If no other Type have been selected then the link is External or
 	// internal with protocol and full path 
-	return URLType.isExternal;
+	// TODO: Trouver un moyen pour isoler les liens externes
+	if (urlTypeReturn.length == 0){
+		urlTypeReturn.push(URLType.isExternal);
+	}
+
+	return urlTypeReturn;
 }
 
 
@@ -222,7 +230,7 @@ function analyze_URL_Type(domElem) {
  * If adresse is an email (mailto:), it's not validate with this method.
  * If the domain of the URl is in the ban list, it's not check too
  */
-function mainValidationProcess() {
+function main_Validation_Process() {
 	// clear all previous diagnostics of the Active Editor
 	links_checker_diagColl.delete(vscode.window.activeTextEditor.document.uri);
 
@@ -238,50 +246,60 @@ function mainValidationProcess() {
 
 	// For each A tags
 	ATags.forEach(function (elem) {
-		// Get the Tag type
-		let urlType = analyze_URL_Type(elem);
-		switch (urlType) {
-			case URLType.isEmpty:			// No URL in the A tag no href, or href is empty
-				addDiagnostic(new LinkResult("NO-URL", myErrorCodeURL.noURL, true), genFunc.getDOMelementPosition(myDOM, elem));
-				break;
-			case URLType.isNameless:	// The link has no name (empty tag: <a href="http://domain.com"></a>)
-				addDiagnostic(new LinkResult("Link without name", myErrorCodeURL.nameless, true), genFunc.getDOMelementPosition(myDOM, elem));
-				break;
-			// URL is part of the excluded domain list
-			case URLType.isExcluded:
-				addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.excludedDomain, true), genFunc.getDOMelementPosition(myDOM, elem));
-				break;
-			case URLType.isEmail:
-				// Nothing to do for the moment
-				break;
-			case URLType.isFTP:
-				// Nothing to do for the moment
-				break;
-			case URLType.isLocalFile:
-				// Protocol is FILE:
-				// Not sure to validate 
-				validateLocalFileLink(elem.href, genFunc.getDOMelementPosition(myDOM, elem));
-				break;
-			case URLType.isRelative:		// URL is a relative URL starting with . or .. or having no /
-				addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.relative, true), genFunc.getDOMelementPosition(myDOM, elem));
-				break;
-			// URL is an anchor
-			case URLType.isAnchor:
-				validateAnchor(elem, myDOM);
-				break;
-			// URL is an Internal link without domain, it start with /
-			case URLType.isInternal:
-				let siteDomainName = vscode.workspace.getConfiguration("html-links-checker").localDomain;
-				validateLink(siteDomainName + elem.href, genFunc.getDOMelementPosition(myDOM, elem));
-				break;
-			// URL is an External link
-			case URLType.isExternal:
-				validateLink(elem.href, genFunc.getDOMelementPosition(myDOM, elem));
-				// Check if accessibility for External link must be processed
-				if (vscode.workspace.getConfiguration("html-links-checker").validateExternalLinkAccessibility) {
-					validateExternalAccessibility(elem, myDOM);
+		// Get the position (Range) of the element in the DOM
+		const elemRange = genFunc.getDOMelementPosition(myDOM, elem);
+
+		// Get the URL type
+		const getAllTypesURL = analyze_URL_Type(elem);
+		
+		// Process each URL Type
+		if (getAllTypesURL.length > 0) {
+
+			getAllTypesURL.forEach(function (curType) {
+				switch (curType) {
+					case URLType.isEmpty:			// No URL in the A tag no href, or href is empty
+						addDiagnostic(new LinkResult("NO-URL", myErrorCodeURL.noURL, true), elemRange);
+						break;
+					case URLType.isNameless:	// The link has no name (empty tag: <a href="http://domain.com"></a>)
+						addDiagnostic(new LinkResult("Link without name", myErrorCodeURL.nameless, true), elemRange);
+						break;
+					// URL is part of the excluded domain list
+					case URLType.isExcluded:
+						addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.excludedDomain, true), elemRange);
+						break;
+					case URLType.isEmail:
+						// Nothing to do for the moment
+						break;
+					case URLType.isFTP:
+						// Nothing to do for the moment
+						break;
+					case URLType.isLocalFile:
+						// Protocol is FILE:
+						// Not sure to validate 
+						validate_Local_File_Link(elem.href, elemRange);
+						break;
+					case URLType.isRelative:		// URL is a relative URL starting with . or .. or having no /
+						addDiagnostic(new LinkResult(elem.href, myErrorCodeURL.relative, true), elemRange);
+						break;
+					// URL is an anchor
+					case URLType.isAnchor:
+						validate_Anchor(elem, myDOM);
+						break;
+					// URL is an Internal link without domain, it start with /
+					case URLType.isInternal:
+						let siteDomainName = vscode.workspace.getConfiguration("html-links-checker").localDomain;
+						validate_External_Link(siteDomainName + elem.href, elemRange);
+						break;
+					// URL is an External link
+					case URLType.isExternal:
+						validate_External_Link(elem.href, elemRange);
+						// Check if accessibility for External link must be processed
+						if (vscode.workspace.getConfiguration("html-links-checker").validateExternalLinkAccessibility) {
+							validate_External_Accessibility(elem, myDOM);
+						}
+						break;
 				}
-				break;
+			});
 		}
 	});
 }
@@ -295,7 +313,7 @@ function mainValidationProcess() {
  * @param {vscode.Range} linkRange The position of the link in the Editor
  * @param {String} initialLink Used only if URL is redirected, this parameters is the initial URL checked
  */
-function validateLink(link, linkRange, initialLink = '') {
+function validate_External_Link(link, linkRange, initialLink = '') {
 	// Define needle's option
 	const options = {
 		method: vscode.workspace.getConfiguration("html-links-checker").requestMethod,
@@ -369,8 +387,8 @@ function validateLink(link, linkRange, initialLink = '') {
 				}
 				// If protocol has been changed and must be displayed separate OR
 				// if protocol has been changed, no DomainChange applied and must be displayed only alone
-				if ((isProtocolChanged && paramProtocl == 'yes - separate'.toLowerCase()) || 
-					  (isProtocolChanged && isDomainChanged == false && paramProtocl == 'Yes - global'.toLowerCase())) {
+				if ((isProtocolChanged && paramProtocl == 'yes - separate'.toLowerCase()) ||
+					(isProtocolChanged && isDomainChanged == false && paramProtocl == 'Yes - global'.toLowerCase())) {
 					// Add the diagnostic in the 'Problems' tab
 					addDiagnostic(new LinkResult(initialURL[0], myErrorCodeURL.redirectProtocol, true, true, finalURL[0]), linkRange);
 				}
@@ -383,7 +401,7 @@ function validateLink(link, linkRange, initialLink = '') {
 				// If WWW has been changed and must be displayed separate OR
 				// if WWW has been changed, no DomainChange applied and must be displayed only alone
 				if ((isWWWChanged && paramWWW == 'yes - separate'.toLowerCase()) ||
-					  (isWWWChanged && isDomainChanged == false && paramWWW == 'Yes - global'.toLowerCase())) {
+					(isWWWChanged && isDomainChanged == false && paramWWW == 'Yes - global'.toLowerCase())) {
 					// Add the diagnostic in the 'Problems' tab
 					addDiagnostic(new LinkResult(initialURL[0], myErrorCodeURL.redirectWWW, true, true, finalURL[0]), linkRange);
 				}
@@ -397,10 +415,10 @@ function validateLink(link, linkRange, initialLink = '') {
  * @param {String} link The URL to check
  * @param {vscode.Range} linkRange The position of the link in the Editor
  */
-function validateLocalFileLink(link, linkRange){
+function validate_Local_File_Link(link, linkRange) {
 	const checkSpaces = link.match(/\s/gi);
-	if (checkSpaces == undefined || checkSpaces == null){
-//		addDiagnostic(new LinkResult(link, myErrorCodeURL.spaceInLocalFile, true), linkRange);
+	if (checkSpaces == undefined || checkSpaces == null) {
+		//		addDiagnostic(new LinkResult(link, myErrorCodeURL.spaceInLocalFile, true), linkRange);
 	}
 }
 
@@ -417,6 +435,7 @@ function addDiagnostic(linkresult, linkRange) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
 			'Link redirected to: "' + linkresult.redirectionLink, linkRange, vscode.DiagnosticSeverity.Warning);
 	}
+	
 	// If link is redirected and that work but only protocol has been changed
 	else if (linkresult.redirected && linkresult.statusCode == myErrorCodeURL.redirectProtocol) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
@@ -483,7 +502,7 @@ function addDiagnostic(linkresult, linkRange) {
 			'Link is a member of the excluded domains list.', linkRange, vscode.DiagnosticSeverity.Information);
 	}
 	// send an error for all other kind of error
-	else {
+	else if (linkresult.statusCode != 200) {
 		theDiag = new linkDiagnostic(linkresult.statusCode,
 			'Link error: Link is not working. It must be updated or removed.' + linkresult.link + ')', linkRange, vscode.DiagnosticSeverity.Error);
 	}
@@ -495,13 +514,14 @@ function addDiagnostic(linkresult, linkRange) {
 }
 
 
+
 /** ***********************************************************************************************
  * Method checks if this external link is compliant with accessibility
  * Check for the attribute 'rel="external"' and if link text contain (external link)
  * @param {JSDOM.nodeElem} DOMelem
  * @param {JSDOM} DOM 
  */
-function validateExternalAccessibility(elem, myDOM) {
+function validate_External_Accessibility(elem, myDOM) {
 	// check if link could be internal link (domain)
 	let localDomain = vscode.workspace.getConfiguration("html-links-checker").localDomain;
 	localDomain = localDomain.replace(/^(\w*\:\/\/)?(www\.)?(.+)/gmi, "$3");

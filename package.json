@@ -2,7 +2,7 @@
 	"name": "html-links-checker",
 	"displayName": "HTML Links Checker",
 	"description": "Tools to validate HTML link in the text editor. Result are shown in the 'Problems' tab",
-	"version": "1.0.7",
+	"version": "1.0.8",
 	"publisher": "j-clavoie",
 	"engines": {
 		"vscode": "^1.52.0"
@@ -25,7 +25,7 @@
 		"jsdom": "^16.4.0",
 		"urllib": "^2.36.1"
 	},
-	"main": "./src/extension.js",
+	"main": "./dist/extension.js",
 	"contributes": {
 		"commands": [
 			{
