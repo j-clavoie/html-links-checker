@@ -52,10 +52,14 @@ function main_Validation_Process() {
 	// Retrieve all A tag in the DOM
 	const ATags = myDOM.window.document.querySelectorAll('a');
 
-	ATags.forEach(function (elem) {
-		//const test = new validateURL(elem, wholeDOM);
-		new validateURL(elem, wholeDOM);
+	ATags.forEach(async function (elem) {
+		//new validateURL(elem, wholeDOM);
+		executeValidation(elem, wholeDOM);
 	});
+}
+
+async function executeValidation (elem, wholeDOM){
+	new validateURL(elem, wholeDOM);
 }
 
 /* #*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*
@@ -86,6 +90,9 @@ class validateURL {
 
 		// Error Type properties
 		this.error = {};
+
+		// Warning Type properties
+		this.warning = {};
 
 		// Variable of control
 		let canProcessValidation = true;
@@ -187,7 +194,7 @@ class validateURL {
 	/**
 	 * Main method validates each type of URL
 	 */
-	validateURL() {
+	async validateURL() {
 		if (this.urlType.isAnchor) {
 			this.validate_Anchor();
 		}
@@ -226,13 +233,13 @@ class validateURL {
 	 * If no value passed then the method use the URL in the object.
 	 * All errors/warnings found with this URL will be set in the object
 	 */
-	validate_full_link(localDomain = null) {
+	async validate_full_link(localDomain = null) {
 		// Define needle's option
 		const options = {
 			method: vscode.workspace.getConfiguration("html-links-checker").requestMethod,
 			rejectUnauthorized: false,
-			followRedirect: true
-			//timeout: 6000
+			followRedirect: true,
+			timeout: 6000
 		};
 		// Copy the current object in a variable to be able to refer to it inside another object.
 		const self = this;
@@ -268,8 +275,8 @@ class validateURL {
 					let initialURL = resp.requestUrls[0].replace(/\/$/g, '');
 					let finalURL = resp.requestUrls[resp.requestUrls.length - 1].replace(/\/$/g, '');
 
-					// Set error
-					self.error.redirected = true;
+					// Set warning
+					self.warning.redirected = true;
 					// Get the new redirected URL
 					self.redirectURL = finalURL;
 
@@ -278,10 +285,10 @@ class validateURL {
 					finalURL = finalURL.match(/(.*?\:\/\/)(www\.)*(.+?)$/i);
 
 					// Check if Protocl (HTTP(S)) has changed from the initial to final URL
-					self.error.redirectProtocolChanged = initialURL[1] == finalURL[1] ? false : true;
+					self.warning.redirectProtocolChanged = initialURL[1] == finalURL[1] ? false : true;
 
 					// Check if WWW has been added or removed from the initial to final URL
-					self.error.redirectWWW = initialURL[2] == finalURL[2] ? false : true;
+					self.warning.redirectWWW = initialURL[2] == finalURL[2] ? false : true;
 				}
 			}
 			// Analyze error and add message to 'Problems' tab
@@ -329,6 +336,9 @@ class validateURL {
 				case 404:
 					buildMSG += " => Error: Not found, code #" + this.statusCode + ".\n";
 					break;
+				case 407:
+					buildMSG += " => Error: Proxy Authentication Required, code #" + this.statusCode + ".\n";
+					break;
 				case 410:
 					buildMSG += " => Error: Deleted, code #" + this.statusCode + ".\n";
 					break;
@@ -341,13 +351,13 @@ class validateURL {
 			}
 			
 		}
-		if (this.error.redirected) {
+		if (this.warning.redirected) {
 			buildMSG += " => Redirected to --> " + this.redirectURL + " <--.\n";
 		}
-		if (this.error.redirectProtocolChanged) {
+		if (this.warning.redirectProtocolChanged) {
 			//buildMSG += "	-";
 		}
-		if (this.error.redirectWWW) {
+		if (this.warning.redirectWWW) {
 			//buildMSG += "	-";
 		}
 
@@ -366,21 +376,30 @@ class validateURL {
 	 * @param {String} msgToShow is the message that will be displayed to user
 	 */
 	addMessage() {
+		// Get if error or warning have been set
+		const hasError = Object.keys(this.error).length > 0 ? true : false;
+		const hasWarning = Object.keys(this.warning).length > 0 ? true : false;
+		
 		// If error has been set then display in 'Problems' tab
-		if (Object.keys(this.error).length > 0) {
+		if (hasError || hasWarning) {
+			// Define the message error level
+			const errorLevel = hasError ? vscode.DiagnosticSeverity.Error : vscode.DiagnosticSeverity.Warning;
 			// Get the message to display
 			let msgToShow = this.analyzeErrors();
 			// Get the position of the element in the DOM
 			const elemRange = genFunc.getDOMelementPosition(this.wholeDOM, this.domTag, true);
+			
 			// Define the Diagnostic object
-			const diagElem = new vscode.Diagnostic(elemRange, msgToShow, vscode.DiagnosticSeverity.Error);
+			const diagElem = new vscode.Diagnostic(elemRange, msgToShow, errorLevel);
 			// Add the error in the array of diagnostics and display it in the 'Problems' tab
 			let myDiagnostics = Array.from(links_checker_diagColl.get(vscode.window.activeTextEditor.document.uri));
 			myDiagnostics.push(diagElem);
 			links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, myDiagnostics);
 		} else {
+			
 			// No error to dispaly... nothing to do for now. Maybe add a Info message.
 		}
+		//console.log(this.url);
 	}
 	// End of the Object: validateURL
 }
