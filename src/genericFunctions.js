@@ -68,6 +68,16 @@ module.exports = {
   },
 
 
+  /**
+   * Method to get the whole text in the active editor
+   */
+  getWholeText: function getWholeText() {
+    const editor = this.getActiveEditor();
+    const wholeRange = new vscode.Range(editor.document.positionAt(0), editor.document.positionAt(editor.document.getText().length));
+    return editor.document.getText(wholeRange );
+  },
+
+
 
   /**
    * Method that asks to user the language (english, french, etc) of the text (content) in the code
@@ -173,7 +183,7 @@ module.exports = {
     if (fromSelection){
       startSelectionPosition = this.getPositionSelection();
     } else {
-      new vscode.Position(0, 0);
+      startSelectionPosition = new vscode.Position(0, 0);
     }
     
     // Set the range of text the header in error

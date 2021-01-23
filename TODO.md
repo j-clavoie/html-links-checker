@@ -1,5 +1,18 @@
 # TODO
 
+## Authentification Windows (single-sign-on)
+Pistes de réflexion/analyse
++ https://www.example-code.com/nodejs/http_windows_integrated_authentication.asp
++ https://www.npmjs.com/package/node-sspi
+
+## PROXY
++ Ajouter des propriétées à l'extension pour définir les paramètres
+  + proxy settings
+  + user ID
++ Créer un popup pour demander le mot de passer à l'utilisateur pour la vérifier des liens. Demandé une seule fois.
++ Lorsque l'erreur du status est 407 alors utiliser les options avec le proxy pour atteindre l'URL
+
+
 ## Définir les erreurs
 + Refaire le structure des erreurs et la façon des les affichers pour les regrouper et les trier correctement
 
