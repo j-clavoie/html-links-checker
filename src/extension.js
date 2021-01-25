@@ -41,25 +41,26 @@ module.exports = {
 }
 
 function main_Validation_Process() {
+	// Create a DOM with ALL content (used to valide IDs)
+	const tt = genFunc.getWholeText();
+	const wholeDOM = new JSDOM(tt, { includeNodeLocations: true, contentType: "text/html" });
+	
 	// Get selected text
 	const curContent = genFunc.getTextSelected(true);
 	// Create a DOM from the selected text
 	let myDOM = new JSDOM(curContent, { includeNodeLocations: true, contentType: "text/html" });
-
-	// Create a DOM with ALL content (used to valide IDs)
-	const tt = genFunc.getWholeText();
-	const wholeDOM = new JSDOM(tt, { includeNodeLocations: true, contentType: "text/html" });
-	// Retrieve all A tag in the DOM
+	// Retrieve all A tag in the DOM from selected text
 	const ATags = myDOM.window.document.querySelectorAll('a');
-
-	ATags.forEach(async function (elem) {
-		//new validateURL(elem, wholeDOM);
-		executeValidation(elem, wholeDOM);
+	// Process each A Tag
+	ATags.forEach(function (elem) {
+		new URLValidator(elem, wholeDOM);
+		//executeValidation(elem, wholeDOM);
 	});
+	
 }
 
 async function executeValidation (elem, wholeDOM){
-	new validateURL(elem, wholeDOM);
+	new URLValidator(elem, wholeDOM);
 }
 
 /* #*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*
@@ -74,7 +75,7 @@ async function executeValidation (elem, wholeDOM){
 
 
 
-class validateURL {
+class URLValidator {
 	/**
 	 * 
 	 * @param {JSDOM.nodeElem} JSDOM_Link_tag 
@@ -113,6 +114,9 @@ class validateURL {
 		// If "canProcessValidation"
 		if (canProcessValidation) {
 			this.validateURL();
+		} else {
+			// Analyze error and add message to 'Problems' tab
+			this.addMessage();
 		}
 	}
 
@@ -194,9 +198,17 @@ class validateURL {
 	/**
 	 * Main method validates each type of URL
 	 */
-	async validateURL() {
+	validateURL() {
 		if (this.urlType.isAnchor) {
 			this.validate_Anchor();
+		}
+
+		if (this.urlType.isEmail) {
+			this.validate_Email();
+		}
+
+		if (this.urlType.isRelative) {
+			this.validate_Relative();
 		}
 
 		if (this.urlType.isExternal) {
@@ -227,19 +239,50 @@ class validateURL {
 		this.addMessage();
 	}
 
+
+	/**
+	 * Method that validates Email Address
+	 */
+	validate_Email() {
+		// Regex pattern to use to test email validation ** Get on Stackoverflow.com
+		const rePattern = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+		// Remove the 'mailto:' part in the URL before test it
+		const tmpURL = this.url.replace("mailto:", '');
+		// Test the email address, if not OK = add error
+		if (! rePattern.test(tmpURL)) {
+			this.error.emailInvalid = true;
+		} 
+
+		// Analyze error and add message to 'Problems' tab
+		this.addMessage();
+	}
+
+
+	/**
+	 * Method that validates relative Link
+	 * TODO: Nothing is validated for the moment, ony a warning is displayed to user to inform that link is relative
+	 */
+	validate_Relative() {
+		this.warning.relativeFile = true;
+		
+		// Analyze error and add message to 'Problems' tab
+		this.addMessage();
+	}
+
+
 	/**
 	 * Method that validates an external and internal link.
 	 * @param {String} localDomain (optional) is the local domain to add at the beginning of the URL to create a full URL.
 	 * If no value passed then the method use the URL in the object.
 	 * All errors/warnings found with this URL will be set in the object
 	 */
-	async validate_full_link(localDomain = null) {
+	validate_full_link(localDomain = null) {
 		// Define needle's option
 		const options = {
 			method: vscode.workspace.getConfiguration("html-links-checker").requestMethod,
 			rejectUnauthorized: false,
-			followRedirect: true,
-			timeout: 6000
+			followRedirect: true
+			//timeout: 6000
 		};
 		// Copy the current object in a variable to be able to refer to it inside another object.
 		const self = this;
@@ -310,9 +353,11 @@ class validateURL {
 			buildMSG += " => No URL.\n";
 		}
 		if (this.error.spaceInURL) {
-			buildMSG += " => URL contains space(s).\n";
+			buildMSG += " => URL contains space(s). Remove spaces and re-execute validation.\n";
 		}
-
+		if (this.error.emailInvalid) {
+			buildMSG += " => Email address is invalid.\n";
+		}
 		if (this.error.nameless) {
 			buildMSG += " => Text link is missing.\n";
 		}
@@ -360,6 +405,9 @@ class validateURL {
 		if (this.warning.redirectWWW) {
 			//buildMSG += "	-";
 		}
+		if (this.warning.relativeFile) {
+			buildMSG += " => Relative URL, can't be validated.\n";
+		}
 
 		if (buildMSG == '') {
 			return '';
@@ -385,21 +433,21 @@ class validateURL {
 			// Define the message error level
 			const errorLevel = hasError ? vscode.DiagnosticSeverity.Error : vscode.DiagnosticSeverity.Warning;
 			// Get the message to display
-			let msgToShow = this.analyzeErrors();
+			const msgToShow = this.analyzeErrors();
 			// Get the position of the element in the DOM
 			const elemRange = genFunc.getDOMelementPosition(this.wholeDOM, this.domTag, true);
 			
 			// Define the Diagnostic object
 			const diagElem = new vscode.Diagnostic(elemRange, msgToShow, errorLevel);
+			diagElem.code = this.statusCode;
+			diagElem.source = 'HTML Links Checker';
 			// Add the error in the array of diagnostics and display it in the 'Problems' tab
 			let myDiagnostics = Array.from(links_checker_diagColl.get(vscode.window.activeTextEditor.document.uri));
 			myDiagnostics.push(diagElem);
 			links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, myDiagnostics);
 		} else {
-			
 			// No error to dispaly... nothing to do for now. Maybe add a Info message.
 		}
-		//console.log(this.url);
 	}
 	// End of the Object: validateURL
 }

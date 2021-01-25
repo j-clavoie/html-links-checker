@@ -1,6 +1,15 @@
 # TODO
 
+## Lien FILE://
++ Indiquer les problèmes potentiel dans les liens FILE://
+  + espace devrait être remplacés par %20
+  + \ par /
+  
 ## Authentification Windows (single-sign-on)
++ Trouver une solution pour les single-sign-on
++ Voir à ajouter un popup pour login et password
++ voir à ajouter des paramèters d'extension pour le login et un popup pour le password
+## Authentification 
 Pistes de réflexion/analyse
 + https://www.example-code.com/nodejs/http_windows_integrated_authentication.asp
 + https://www.npmjs.com/package/node-sspi
@@ -28,16 +37,7 @@ Pistes de réflexion/analyse
 + ne pas valider si les expression sont présentes lorsque c'est un lien interne
 
 
-## Authentification
-+ Trouver une solution pour les single-sign-on
-+ Voir à ajouter un popup pour login et password
-+ voir à ajouter des paramèters d'extension pour le login et un popup pour le password
 
-
-## Lien FILE://
-+ Indiquer les problèmes potentiel dans les liens FILE://
-  + espace devrait être remplacés par %20
-  + \ par /
 
 ## Quick fix
 + Développer les quick fix :

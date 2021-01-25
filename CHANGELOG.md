@@ -1,5 +1,16 @@
 # Change Log
 
+## [1.1.0] - 2021-01-25
+**First attempt with this new rebuilt code.**<br>
+Working version to test/evaluate in production to find improvement before to continue code conversion.
++ Rebuilt the code with object perspective
++ Multiple Error/Warning messages in 'Problems' tab are merged together to avoid duplication of message for the same link. Only one message with all errors/warnings in it.
++ Warning added for relative URL, because this kind of link is not validate for the moment (need manual validation)
++ Email validation (format) has been added with error message if the address is not a valide email format.
++ Validation of spaces in URL, error added when spaces is present in URL because it's not supposed to have space in URL, %20 must be replace spaces.
+
+
+
 ## [1.0.8] - 2021-01-12
 + Test to fix working link but displayed as error.<br>
   It's temporary. The code is reviewed and big change will come.
