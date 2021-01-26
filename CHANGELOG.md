@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.1.2] - 2021-##########################
+
+## [1.1.1] - 2021-01-26
++ Updated dependencies
+
+
 ## [1.1.0] - 2021-01-25
 **First attempt with this new rebuilt code.**<br>
 Working version to test/evaluate in production to find improvement before to continue code conversion.
@@ -8,8 +14,6 @@ Working version to test/evaluate in production to find improvement before to con
 + Warning added for relative URL, because this kind of link is not validate for the moment (need manual validation)
 + Email validation (format) has been added with error message if the address is not a valide email format.
 + Validation of spaces in URL, error added when spaces is present in URL because it's not supposed to have space in URL, %20 must be replace spaces.
-
-
 
 ## [1.0.8] - 2021-01-12
 + Test to fix working link but displayed as error.<br>

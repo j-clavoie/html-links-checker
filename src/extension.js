@@ -22,7 +22,14 @@ vscode.workspace.onDidCloseTextDocument(function (listener) {
 function activate(context) {
 
 	let disposable = vscode.commands.registerCommand('html-links-checker.start', function () {
+		// If code is not HTML, then exits with a message, message sent inside the isHTMLcode function.
+		if (!genFunc.isHTMLcode()){
+			return;
+		}
+
+		// Clear previous Diagnostics
 		links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, []);
+		
 		// Main process - Validate all URL 
 		main_Validation_Process();
 	});
@@ -54,14 +61,9 @@ function main_Validation_Process() {
 	// Process each A Tag
 	ATags.forEach(function (elem) {
 		new URLValidator(elem, wholeDOM);
-		//executeValidation(elem, wholeDOM);
-	});
-	
+	});	
 }
 
-async function executeValidation (elem, wholeDOM){
-	new URLValidator(elem, wholeDOM);
-}
 
 /* #*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*
 /* #*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*#*

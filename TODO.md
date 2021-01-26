@@ -1,5 +1,12 @@
 # TODO
 
+## Comparer nom du lien avec title de la page de destination
+Dans urllib
+  const dataStr = data.toString();
+  const dataH1 = dataStr.match(/<h1.*?>(.*?)<\/h1>/im);
+  console.log(self.domTag.text + " || " + dataH1[1]);
+
+
 ## Lien FILE://
 + Indiquer les problèmes potentiel dans les liens FILE://
   + espace devrait être remplacés par %20
