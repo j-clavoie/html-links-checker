@@ -5,10 +5,9 @@ const JSDOM = require('jsdom').JSDOM;
 
 
 // Create a new Collection for Diagnostics
-// A Diagnostics Collection must be outsides of an function.
+// A Diagnostics Collection must be outsides of a function.
 const links_checker_diagColl = vscode.languages.createDiagnosticCollection("html-link-checker");
-
-// Use to clear the "Problems" Tab when we close the file
+// Clear all diagnostics from the "Problems" Tab when we close the file
 vscode.workspace.onDidCloseTextDocument(function (listener) {
 	// clear all previous diagnostics of the closed editor
 	links_checker_diagColl.delete(listener.uri);
@@ -23,13 +22,13 @@ function activate(context) {
 
 	let disposable = vscode.commands.registerCommand('html-links-checker.start', function () {
 		// If code is not HTML, then exits with a message, message sent inside the isHTMLcode function.
-		if (!genFunc.isHTMLcode()){
+		if (!genFunc.isHTMLcode()) {
 			return;
 		}
 
 		// Clear previous Diagnostics
 		links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, []);
-		
+
 		// Main process - Validate all URL 
 		main_Validation_Process();
 	});
@@ -51,7 +50,7 @@ function main_Validation_Process() {
 	// Create a DOM with ALL content (used to valide IDs)
 	const tt = genFunc.getWholeText();
 	const wholeDOM = new JSDOM(tt, { includeNodeLocations: true, contentType: "text/html" });
-	
+
 	// Get selected text
 	const curContent = genFunc.getTextSelected(true);
 	// Create a DOM from the selected text
@@ -61,7 +60,7 @@ function main_Validation_Process() {
 	// Process each A Tag
 	ATags.forEach(function (elem) {
 		new URLValidator(elem, wholeDOM);
-	});	
+	});
 }
 
 
@@ -76,11 +75,16 @@ function main_Validation_Process() {
 */
 
 
-
+/**
+ * Object that validate an A tag element
+ * TODO: change contructor to indicate if the object is an A tag or a IMG tag
+ */
 class URLValidator {
 	/**
 	 * 
-	 * @param {JSDOM.nodeElem} JSDOM_Link_tag 
+	 * @param {JSDOM.nodeElem} JSDOM_Link_tag is the tag that contains the URL to check (A or IMG tag)
+	 * @param {JSDOM} wholeDOM is the DOM of the whole current active editor.
+	 * 												 Must be the whole DOM for the position and for the Anchor validation
 	 */
 	constructor(JSDOM_Link_tag, wholeDOM) {
 		this.wholeDOM = wholeDOM;
@@ -103,7 +107,7 @@ class URLValidator {
 		// Evaluate the URL to determine its kind/preliminary error
 		this.processURL();
 
-		// If URL is empty or it's in the excluded list
+		// If URL is empty or it's in the excluded list, no validation required
 		if (this.error.emptyURL || this.urlType.isExcluded) {
 			canProcessValidation = false;
 		}
@@ -115,6 +119,7 @@ class URLValidator {
 
 		// If "canProcessValidation"
 		if (canProcessValidation) {
+			// Validate URL
 			this.validateURL();
 		} else {
 			// Analyze error and add message to 'Problems' tab
@@ -159,18 +164,28 @@ class URLValidator {
 			this.urlType.isLocalFile = true;
 		}
 
-		// Check if the URL is excluded (from Extension's properties)
-		if (vscode.workspace.getConfiguration("html-links-checker").excludedDomains.length > 0) {
-			const excludedDomainsList = vscode.workspace.getConfiguration("html-links-checker").excludedDomains;
-			if (excludedDomainsList.length > 0) {
-				let exclError = false;
-				excludedDomainsList.forEach(function (edl) {
-					if (this.url.search(edl) > -1) {
-						exclError = true;
+		if (!this.error.emptyURL) {
+			// Check if the URL is excluded (from Extension's properties)
+			if (vscode.workspace.getConfiguration("html-links-checker").excludedDomains.length > 0) {
+				const excludedDomainsList = vscode.workspace.getConfiguration("html-links-checker").excludedDomains;
+				if (excludedDomainsList.length > 0) {
+					// Define default flag
+					let exclError = false;
+					// Keep URL in lowercase to use it in the forEach below
+					const tmpURL = this.url.toLowerCase();
+
+					// Check if all excluded domains are present in the URL
+					excludedDomainsList.forEach(function (edl) {
+						if (tmpURL.search(edl) > -1) {
+							// Change flag value
+							exclError = true;
+						}
+					});
+
+					// Flag is tru then this URL excluded
+					if (exclError) {
+						this.urlType.isExcluded = true;
 					}
-				});
-				if (exclError) {
-					this.urlType.isExcluded = true;
 				}
 			}
 		}
@@ -215,7 +230,6 @@ class URLValidator {
 
 		if (this.urlType.isExternal) {
 			this.validate_full_link();
-			// this.validate_accessibility();
 		}
 
 		if (this.urlType.isInternal) {
@@ -251,9 +265,9 @@ class URLValidator {
 		// Remove the 'mailto:' part in the URL before test it
 		const tmpURL = this.url.replace("mailto:", '');
 		// Test the email address, if not OK = add error
-		if (! rePattern.test(tmpURL)) {
+		if (!rePattern.test(tmpURL)) {
 			this.error.emailInvalid = true;
-		} 
+		}
 
 		// Analyze error and add message to 'Problems' tab
 		this.addMessage();
@@ -262,11 +276,11 @@ class URLValidator {
 
 	/**
 	 * Method that validates relative Link
-	 * TODO: Nothing is validated for the moment, ony a warning is displayed to user to inform that link is relative
+	 * TODO: Nothing is validated for the moment, only a warning is displayed to user to inform that link is relative
 	 */
 	validate_Relative() {
 		this.warning.relativeFile = true;
-		
+
 		// Analyze error and add message to 'Problems' tab
 		this.addMessage();
 	}
@@ -376,7 +390,7 @@ class URLValidator {
 			buildMSG += " => Connection timeout.\n";
 		}
 		if (this.error.requestError) {
-			switch(this.statusCode){
+			switch (this.statusCode) {
 				case 401:
 					buildMSG += " => Error: Authentication required, code #" + this.statusCode + ".\n";
 					break;
@@ -389,14 +403,14 @@ class URLValidator {
 				case 410:
 					buildMSG += " => Error: Deleted, code #" + this.statusCode + ".\n";
 					break;
-				case 500-599:
+				case 500 - 599:
 					buildMSG += " => Server Error, code #" + this.statusCode + ".\n";
 					break;
-				default: 
+				default:
 					buildMSG += " => Error, code #" + this.statusCode + ".\n";
 					break;
 			}
-			
+
 		}
 		if (this.warning.redirected) {
 			buildMSG += " => Redirected to --> " + this.redirectURL + " <--.\n";
@@ -429,7 +443,7 @@ class URLValidator {
 		// Get if error or warning have been set
 		const hasError = Object.keys(this.error).length > 0 ? true : false;
 		const hasWarning = Object.keys(this.warning).length > 0 ? true : false;
-		
+
 		// If error has been set then display in 'Problems' tab
 		if (hasError || hasWarning) {
 			// Define the message error level
@@ -438,7 +452,7 @@ class URLValidator {
 			const msgToShow = this.analyzeErrors();
 			// Get the position of the element in the DOM
 			const elemRange = genFunc.getDOMelementPosition(this.wholeDOM, this.domTag, true);
-			
+
 			// Define the Diagnostic object
 			const diagElem = new vscode.Diagnostic(elemRange, msgToShow, errorLevel);
 			diagElem.code = this.statusCode;
@@ -448,7 +462,7 @@ class URLValidator {
 			myDiagnostics.push(diagElem);
 			links_checker_diagColl.set(vscode.window.activeTextEditor.document.uri, myDiagnostics);
 		} else {
-			// No error to dispaly... nothing to do for now. Maybe add a Info message.
+			// No error to display... nothing to do for now. Maybe add a Info message.
 		}
 	}
 	// End of the Object: validateURL
