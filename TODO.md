@@ -29,9 +29,6 @@ Pistes de réflexion/analyse
 + Lorsque l'erreur du status est 407 alors utiliser les options avec le proxy pour atteindre l'URL
 
 
-## Définir les erreurs
-+ Refaire le structure des erreurs et la façon des les affichers pour les regrouper et les trier correctement
-
 ## Lien relatif débutant par ../
 + Vérifier si le module "urllib" peut effectuer la recherche
 + Développer la validation à partir du {workspace}

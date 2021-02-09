@@ -18,6 +18,17 @@ module.exports = {
     });
   },
 
+    /**
+     * 
+     * @param {Interger} milisec number of miliseconds to wait before to continue.
+     * This function must be preceeded by "await" to work properly
+     */
+  waiter(milisec) {
+    return new Promise(resolve => {
+      setTimeout(() => { resolve('') }, milisec);
+    })
+  },
+
 
   /**
    * Method to get the current active editor
@@ -74,7 +85,7 @@ module.exports = {
   getWholeText: function getWholeText() {
     const editor = this.getActiveEditor();
     const wholeRange = new vscode.Range(editor.document.positionAt(0), editor.document.positionAt(editor.document.getText().length));
-    return editor.document.getText(wholeRange );
+    return editor.document.getText(wholeRange);
   },
 
 
@@ -180,12 +191,12 @@ module.exports = {
 
     // if the selection position must be considered than rerieve Selection's start position
     // If not then the position won't be incremented
-    if (fromSelection){
+    if (fromSelection) {
       startSelectionPosition = this.getPositionSelection();
     } else {
       startSelectionPosition = new vscode.Position(0, 0);
     }
-    
+
     // Set the range of text the header in error
     const elemRange = new vscode.Range(
       nodeElem.startTag.startLine - 1 + startSelectionPosition.line,

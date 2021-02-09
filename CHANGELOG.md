@@ -1,11 +1,26 @@
 # Change Log
 
-## [1.1.8] - 2021-01-26
-+ Fix issue related to "this" inside a "forEach"
+## [1.1.10] - 2021-02-09
++ Converted urllib with the Promise way
++ Added delay to each 8 links to not attach the DNS <br>
+  1 second to each 8 links processes<br>
+  To be improved but work better than before<br>
+  2 new Extension's properties added to manage the number of links and the delay (milisecond)
++ Added a "completed" message at the end of process
+
+
+
+
+## [1.1.9] - 2021-01-27
++ Tried to fix an issue with response with error and status code 200. It seems that status code is 200 but timeout occur and generates an error. So, the URL is 200 (valid) but is in error due to timeout.
++ Test for proxy connexion.
+
+## [1.1.8] - 2021-01-27
++ Fixed issue related to "this" inside a "forEach"
 + Update comments in code
 
 ## [1.1.2 to 1.1.7] - 2021-01-27
-+ Test to fix issue on Windows
++ Tests to fix issue on Windows
 
 ## [1.1.1] - 2021-01-26
 + Updated dependencies

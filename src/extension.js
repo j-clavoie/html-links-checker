@@ -46,7 +46,10 @@ module.exports = {
 	deactivate
 }
 
-function main_Validation_Process() {
+/**
+ * This is the main funcion that start the validation process
+ */
+async function main_Validation_Process() {
 	// Create a DOM with ALL content (used to valide IDs)
 	const tt = genFunc.getWholeText();
 	const wholeDOM = new JSDOM(tt, { includeNodeLocations: true, contentType: "text/html" });
@@ -57,10 +60,44 @@ function main_Validation_Process() {
 	let myDOM = new JSDOM(curContent, { includeNodeLocations: true, contentType: "text/html" });
 	// Retrieve all A tag in the DOM from selected text
 	const ATags = myDOM.window.document.querySelectorAll('a');
-	// Process each A Tag
-	ATags.forEach(function (elem) {
-		new URLValidator(elem, wholeDOM);
-	});
+	
+	// *** Process each A Tag - start ****
+	// Array that contains all object URLValidator
+	let arrayOfProcesses = [];		
+	// Manager the number of link validate before to wait.
+	let cpt = 0;
+	// get Extension's property values for the process
+	const nbIteration = vscode.workspace.getConfiguration("html-links-checker").delayNumberOfLinksBeforeWait;
+	const nbMilisecond = vscode.workspace.getConfiguration("html-links-checker").delayNumberOfLinksBeforeWait;									
+	// Loop each A tag
+	for (let x = 0; x < ATags.length; x++) {
+		if (cpt == nbIteration){
+			await genFunc.waiter(nbMilisecond)
+			cpt = 0;
+		}
+		// Create a new object in the array (object automatically validates the link)
+		arrayOfProcesses.push(new URLValidator(ATags[x], wholeDOM));
+		cpt++;
+	}
+	// *** Process each A Tag - end ****
+
+	// This section waits until all links will have been processed
+	// object property "completed" is "true" for all links.
+	let flagWhile = true;
+	while (flagWhile){
+		await genFunc.waiter(800)
+		let flagFor = true;
+		for (let x = 0; x < ATags.length; x++) {
+			if (arrayOfProcesses[x].completed == false){
+				flagFor = false
+			}
+		}
+		if (flagFor){
+			flagWhile = false;
+		}
+	}
+	vscode.window.showInformationMessage("Processus terminé");
+	
 }
 
 
@@ -103,7 +140,10 @@ class URLValidator {
 
 		// Variable of control
 		let canProcessValidation = true;
-
+		
+		// When URL has been processed, no matter the result, this attribute is set to TRUE
+		this.completed = false;
+		
 		// Evaluate the URL to determine its kind/preliminary error
 		this.processURL();
 
@@ -122,6 +162,8 @@ class URLValidator {
 			// Validate URL
 			this.validateURL();
 		} else {
+			// Set this object as process completed			
+			this.completed = true;
 			// Analyze error and add message to 'Problems' tab
 			this.addMessage();
 		}
@@ -250,6 +292,8 @@ class URLValidator {
 		} else if (anchor.length > 1) {
 			this.error.multipleAnchors = true;
 		}
+		// Set this object as process completed
+		this.completed = true;
 
 		// Analyze error and add message to 'Problems' tab
 		this.addMessage();
@@ -268,6 +312,8 @@ class URLValidator {
 		if (!rePattern.test(tmpURL)) {
 			this.error.emailInvalid = true;
 		}
+		// Set this object as process completed
+		this.completed = true;
 
 		// Analyze error and add message to 'Problems' tab
 		this.addMessage();
@@ -280,6 +326,8 @@ class URLValidator {
 	 */
 	validate_Relative() {
 		this.warning.relativeFile = true;
+		// Set this object as process completed
+		this.completed = true;
 
 		// Analyze error and add message to 'Problems' tab
 		this.addMessage();
@@ -297,8 +345,11 @@ class URLValidator {
 		const options = {
 			method: vscode.workspace.getConfiguration("html-links-checker").requestMethod,
 			rejectUnauthorized: false,
-			followRedirect: true
-			//timeout: 6000
+			followRedirect: true,
+			timeout: 6000/*
+			enableProxy: true,
+			proxy: '',
+			*/
 		};
 		// Copy the current object in a variable to be able to refer to it inside another object.
 		const self = this;
@@ -308,50 +359,61 @@ class URLValidator {
 		// If not then it's external link and only use the URL in the DOM
 		const fullURL = localDomain != null ? localDomain + this.url : this.url;
 
-		// Request the URL
-		urllib.request(fullURL, options, function (err, data, resp) {
+		// Request the URL with Promise way
+		urllib.request(fullURL, options).then(function (result) {
 			// Set the statusCode returned by the request
-			self.statusCode = resp.statusCode;
+			self.statusCode = result.res.statusCode;
+			// If URL have been redirected then analyze differences
+			if (result.res.requestUrls.length > 1) {
+				//if (result.res.statusCode != 200) {
+				//	self.error.requestError = true;
+				//}
 
-			// If error
-			if (err || resp.statusCode != 200) {
-				switch (resp.statusCode) {
-					case -1:
-						self.error.networkError = true;
-						break;
-					case -2:
-						self.error.connectionTimeout = true;
-						break;
-					default:
-						self.error.requestError = true;
-						break;
-				}
-			} else {
-				// If URL have been redirected then analyze differences
-				if (resp.requestUrls.length > 1) {
+				// Get initial and final URL without the last / (if present)
+				let initialURL = result.res.requestUrls[0].replace(/\/$/g, '');
+				let finalURL = result.res.requestUrls[result.res.requestUrls.length - 1].replace(/\/$/g, '');
 
-					// Get initial and final URL without the last / (if present)
-					let initialURL = resp.requestUrls[0].replace(/\/$/g, '');
-					let finalURL = resp.requestUrls[resp.requestUrls.length - 1].replace(/\/$/g, '');
+				// Set warning
+				self.warning.redirected = true;
+				// Get the new redirected URL
+				self.redirectURL = finalURL;
 
-					// Set warning
-					self.warning.redirected = true;
-					// Get the new redirected URL
-					self.redirectURL = finalURL;
+				// Apply regex on initial and final URL for following comparaisons
+				initialURL = initialURL.match(/(.*?\:\/\/)(www\.)*(.+?)$/i);
+				finalURL = finalURL.match(/(.*?\:\/\/)(www\.)*(.+?)$/i);
 
-					// Apply regex on initial and final URL for following comparaisons
-					initialURL = initialURL.match(/(.*?\:\/\/)(www\.)*(.+?)$/i);
-					finalURL = finalURL.match(/(.*?\:\/\/)(www\.)*(.+?)$/i);
+				// Check if Protocl (HTTP(S)) has changed from the initial to final URL
+				self.warning.redirectProtocolChanged = initialURL[1] == finalURL[1] ? false : true;
 
-					// Check if Protocl (HTTP(S)) has changed from the initial to final URL
-					self.warning.redirectProtocolChanged = initialURL[1] == finalURL[1] ? false : true;
-
-					// Check if WWW has been added or removed from the initial to final URL
-					self.warning.redirectWWW = initialURL[2] == finalURL[2] ? false : true;
-				}
+				// Check if WWW has been added or removed from the initial to final URL
+				self.warning.redirectWWW = initialURL[2] == finalURL[2] ? false : true;
 			}
+			// Set this object as process completed
+			self.completed = true;
+
 			// Analyze error and add message to 'Problems' tab
 			self.addMessage();
+			
+		}).catch(function (err) {
+			switch (err.res.statusCode) {
+				case -1:
+					self.error.networkError = true;
+					break;
+				case -2:
+					self.error.connectionTimeout = true;
+					break;
+				default:
+					if (err.res.statusCode != 200) {
+						self.error.requestError = true;
+					}
+					break;
+			} 
+			// Set this object as process completed
+			self.completed = true;
+
+			// Analyze error and add message to 'Problems' tab
+			self.addMessage();
+			
 		});
 	}
 
