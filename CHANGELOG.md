@@ -1,5 +1,10 @@
 # Change Log
 
+## [1.1.11] - 2021-xxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+## [1.1.11] - 2021-02-10
++ Downgrade the available version of VSCode in package.json for more compatibility
+
 ## [1.1.10] - 2021-02-09
 + Converted urllib with the Promise way
 + Added delay to each 8 links to not attach the DNS <br>
@@ -7,9 +12,6 @@
   To be improved but work better than before<br>
   2 new Extension's properties added to manage the number of links and the delay (milisecond)
 + Added a "completed" message at the end of process
-
-
-
 
 ## [1.1.9] - 2021-01-27
 + Tried to fix an issue with response with error and status code 200. It seems that status code is 200 but timeout occur and generates an error. So, the URL is 200 (valid) but is in error due to timeout.
