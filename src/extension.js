@@ -60,18 +60,18 @@ async function main_Validation_Process() {
 	let myDOM = new JSDOM(curContent, { includeNodeLocations: true, contentType: "text/html" });
 	// Retrieve all A tag in the DOM from selected text
 	const ATags = myDOM.window.document.querySelectorAll('a');
-	
+
 	// *** Process each A Tag - start ****
 	// Array that contains all object URLValidator
-	let arrayOfProcesses = [];		
+	let arrayOfProcesses = [];
 	// Manager the number of link validate before to wait.
 	let cpt = 0;
 	// get Extension's property values for the process
 	const nbIteration = vscode.workspace.getConfiguration("html-links-checker").delayNumberOfLinksBeforeWait;
-	const nbMilisecond = vscode.workspace.getConfiguration("html-links-checker").delayNumberOfLinksBeforeWait;									
+	const nbMilisecond = vscode.workspace.getConfiguration("html-links-checker").delayNumberOfLinksBeforeWait;
 	// Loop each A tag
 	for (let x = 0; x < ATags.length; x++) {
-		if (cpt == nbIteration){
+		if (cpt == nbIteration) {
 			await genFunc.waiter(nbMilisecond)
 			cpt = 0;
 		}
@@ -84,20 +84,20 @@ async function main_Validation_Process() {
 	// This section waits until all links will have been processed
 	// object property "completed" is "true" for all links.
 	let flagWhile = true;
-	while (flagWhile){
+	while (flagWhile) {
 		await genFunc.waiter(800)
 		let flagFor = true;
 		for (let x = 0; x < ATags.length; x++) {
-			if (arrayOfProcesses[x].completed == false){
+			if (arrayOfProcesses[x].completed == false) {
 				flagFor = false
 			}
 		}
-		if (flagFor){
+		if (flagFor) {
 			flagWhile = false;
 		}
 	}
 	vscode.window.showInformationMessage("Processus terminé");
-	
+
 }
 
 
@@ -140,10 +140,10 @@ class URLValidator {
 
 		// Variable of control
 		let canProcessValidation = true;
-		
+
 		// When URL has been processed, no matter the result, this attribute is set to TRUE
 		this.completed = false;
-		
+
 		// Evaluate the URL to determine its kind/preliminary error
 		this.processURL();
 
@@ -224,7 +224,7 @@ class URLValidator {
 						}
 					});
 
-					// Flag is tru then this URL excluded
+					// Flag is true then this URL excluded
 					if (exclError) {
 						this.urlType.isExcluded = true;
 					}
@@ -270,7 +270,19 @@ class URLValidator {
 			this.validate_Relative();
 		}
 
+		if (this.urlType.isLocalFile) {
+			this.validate_local_file();
+		}
+
+		if (this.urlType.isFTP) {
+			this.validate_FTP();
+		}
+
 		if (this.urlType.isExternal) {
+			// Validate External Link Accessibility
+			if (vscode.workspace.getConfiguration("html-links-checker").validateExternalLinkAccessibility) {
+				this.validate_External_Link_Accessibility();
+			}
 			this.validate_full_link();
 		}
 
@@ -299,6 +311,30 @@ class URLValidator {
 		this.addMessage();
 	}
 
+
+	validate_External_Link_Accessibility() {
+		const stringsToCheck = vscode.workspace.getConfiguration("html-links-checker").externalLinkAccessibilityStringToCheck;
+		/*  TODO: This section must be improved to not validate as external link when it local
+							URL using the local domain... maybe must be done before in the whole process
+		let localDomain = vscode.workspace.getConfiguration("html-links-checker").localDomain;
+		localDomain = localDomain.replace(/(http(s?):\/\/)?/, '');
+		if (this.domTag.href.search(localDomain) == -1) { }
+ 		*/
+		if (this.domTag.rel != 'external') {
+			this.error.ExternalAccessibility = true;
+		}
+		let strNoPreset = true;
+
+		for (let tmpx = 0; tmpx < stringsToCheck.length; tmpx++) {
+			if (this.domTag.text.search(stringsToCheck[tmpx]) > -1) {
+				strNoPreset = false;
+				tmpx = stringsToCheck.length
+			}
+		}
+		if (strNoPreset) {
+			this.error.ExternalAccessibility = true;
+		}
+	}
 
 	/**
 	 * Method that validates Email Address
@@ -331,6 +367,30 @@ class URLValidator {
 
 		// Analyze error and add message to 'Problems' tab
 		this.addMessage();
+	}
+
+	/**
+	 * Method that validates local_file
+	 * TODO: Nothing is validated for the moment, only a warning is displayed to user to inform that link is relative
+	 */
+	validate_local_file() {
+		// Set this object as process completed
+		this.completed = true;
+
+		// Analyze error and add message to 'Problems' tab
+		// this.addMessage();
+	}
+
+	/**
+	 * Method that validates FTP 
+	 * TODO: Nothing is validated for the moment, only a warning is displayed to user to inform that link is relative
+	 */
+	validate_FTP() {
+		// Set this object as process completed
+		this.completed = true;
+
+		// Analyze error and add message to 'Problems' tab
+		// this.addMessage();
 	}
 
 
@@ -393,7 +453,7 @@ class URLValidator {
 
 			// Analyze error and add message to 'Problems' tab
 			self.addMessage();
-			
+
 		}).catch(function (err) {
 			switch (err.res.statusCode) {
 				case -1:
@@ -407,13 +467,13 @@ class URLValidator {
 						self.error.requestError = true;
 					}
 					break;
-			} 
+			}
 			// Set this object as process completed
 			self.completed = true;
 
 			// Analyze error and add message to 'Problems' tab
 			self.addMessage();
-			
+
 		});
 	}
 
@@ -450,6 +510,9 @@ class URLValidator {
 		}
 		if (this.error.connectionTimeout) {
 			buildMSG += " => Connection timeout.\n";
+		}
+		if (this.error.ExternalAccessibility) {
+			buildMSG += " => Accessibility, rel=\"external\" or text is missing.\n";
 		}
 		if (this.error.requestError) {
 			switch (this.statusCode) {

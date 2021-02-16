@@ -36,13 +36,6 @@ Pistes de réflexion/analyse
 + Vérifier s'il serait préférable de remplacer le ../ par la partie du path manquantes et tester le lien avec les fonctions existantes (validateLink). Permettrait de savoir si le lien fonctionne sur le serveur plutôt qu'être "présent" sur le serveur
 
 
-## Validation accessibilité lien externes
-+ Les expressions (external link et lien externe) ne semblent pas être validés correctement
-+ ne pas valider si les expression sont présentes lorsque c'est un lien interne
-
-
-
-
 ## Quick fix
 + Développer les quick fix :
   + corriger les liens redirigés

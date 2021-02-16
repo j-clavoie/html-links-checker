@@ -1,6 +1,11 @@
 # Change Log
 
-## [1.1.11] - 2021-xxxxxxxxxxxxxxxxxxxxxxxxxxx
+## [1.1.13] - 2021-############################################
+
+## [1.1.12] - 2021-02-15
++ Add external link accessibility validation with 2 new Extensions's proterties to enabled/disable this validation and define the text to check<br>
+  Usually an external link, to be accessible, must have an attribute ```rel="external"``` and an hidden text in the name's link to say that the link will bring the user outside the current web site, the common term used is: "external link"
++ Fix an issue with local file (file://) and ftp links that bug the progression.
 
 ## [1.1.11] - 2021-02-10
 + Downgrade the available version of VSCode in package.json for more compatibility
