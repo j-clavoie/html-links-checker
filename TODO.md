@@ -6,6 +6,8 @@ Dans urllib
   const dataH1 = dataStr.match(/<h1.*?>(.*?)<\/h1>/im);
   console.log(self.domTag.text + " || " + dataH1[1]);
 
+## External link validation
++ ne pas valider si le domain du lien est le même que le domain du site.
 
 ## Lien FILE://
 + Indiquer les problèmes potentiel dans les liens FILE://

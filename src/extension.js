@@ -424,7 +424,9 @@ class URLValidator {
 			// Set the statusCode returned by the request
 			self.statusCode = result.res.statusCode;
 			// If URL have been redirected then analyze differences
-			if (result.res.requestUrls.length > 1) {
+			if (result.res.statusCode != 200) {
+					self.error.requestError = true;
+			} else if (result.res.requestUrls.length > 1) {
 				//if (result.res.statusCode != 200) {
 				//	self.error.requestError = true;
 				//}

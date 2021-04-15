@@ -314,7 +314,7 @@ PERFORMANCE OF THIS SOFTWARE.
  * @copyright Louis-Dominique Dubeau
  */
 
-/** @license URI.js v4.4.0 (c) 2011 Gary Court. License: http://github.com/garycourt/uri-js */
+/** @license URI.js v4.4.1 (c) 2011 Gary Court. License: http://github.com/garycourt/uri-js */
 
 /**!
  * default-user-agent - index.js

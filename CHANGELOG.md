@@ -1,6 +1,11 @@
 # Change Log
 
-## [1.1.13] - 2021-############################################
+## [1.1.14] - 2021-XXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+
+## [1.1.13] - 2021-04-14
++ Fix issue with External link validation (no validation proceeded)
+
 
 ## [1.1.12] - 2021-02-15
 + Add external link accessibility validation with 2 new Extensions's proterties to enabled/disable this validation and define the text to check<br>
