@@ -405,7 +405,7 @@ class URLValidator {
 		const options = {
 			method: vscode.workspace.getConfiguration("html-links-checker").requestMethod,
 			rejectUnauthorized: false,
-			followRedirect: true,
+			followRedirect: vscode.workspace.getConfiguration("html-links-checker").validateExternalLinkFollowRedirection,
 			timeout: 6000/*
 			enableProxy: true,
 			proxy: '',

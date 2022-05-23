@@ -83,6 +83,11 @@
 					"type": "boolean",
 					"default": true
 				},
+				"html-links-checker.validateExternalLinkFollowRedirection": {
+					"description": "Enable/Disable Redirection for external links",
+					"type": "boolean",
+					"default": true
+				},
 				"html-links-checker.externalLinkAccessibilityStringToCheck": {
 					"description": "Specifies all strings to check in the external link's name to be compliant with accessibility",
 					"type": "array",
